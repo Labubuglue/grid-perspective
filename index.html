@@ -1170,6 +1170,22 @@ function paperGrid(){
   return c.toDataURL('image/png');
 }
 var lastURL = null;
+
+/* When the page runs inside a viewer that mediates saving, route the Download
+   button through it. Opened as a plain file the anchor saves by itself. */
+var saver = null;
+try{
+  if(window.claude && typeof window.claude.use === 'function'){
+    window.claude.use('downloads').then(function(d){ saver = d; }, function(){});
+  }
+}catch(e){}
+function dataURLBytes(url){
+  var bin = atob(url.slice(url.indexOf(',') + 1));
+  var arr = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+var HOLD_TIP = 'Press and hold the picture above and choose "Save image" instead.';
 /* Shows the finished picture so it can be saved by long-press (phones) or the
    Download button (desktop) — a scripted download alone is blocked in some viewers. */
 function showResult(url, title, name){
@@ -1180,6 +1196,18 @@ function showResult(url, title, name){
   $('#ov').classList.add('on');
 }
 function closeResult(){ $('#ov').classList.remove('on'); }
+$('#ovDl').addEventListener('click', function(e){
+  if(!saver || !lastURL) return;            /* plain file: let the link do it */
+  e.preventDefault();
+  var name = this.getAttribute('download') || 'grid.png';
+  saver.save({filename:name, data:dataURLBytes(lastURL)}).catch(function(err){
+    var code = err && err.code;
+    if(code === 'declined' || code === 'rate_limited') return;
+    alert(code === 'too_large'
+      ? 'That picture is too big to save this way. ' + HOLD_TIP
+      : "Saving isn't available here. " + HOLD_TIP);
+  });
+});
 $('#ovClose').addEventListener('click', closeResult);
 $('#ov').addEventListener('click', function(e){ if(e.target.id === 'ov') closeResult(); });
 $('#ovPrint').addEventListener('click', function(){ if(lastURL) printURL(lastURL); });
