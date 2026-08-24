@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23EC008C'/%3E%3Cg stroke='white' stroke-width='2'%3E%3Cpath d='M11 5v22M21 5v22M5 11h22M5 21h22'/%3E%3C/g%3E%3C/svg%3E">
-<title>Grid &amp; Perspective — drawing helper</title>
+<title>Grid &amp; Perspective</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -118,6 +118,19 @@
     .side{width:100%; flex:1 1 auto; border-right:none; border-top:1px solid var(--line); order:2}
     .brand{padding:10px 14px}
   }
+
+  /* ---------- save sheet ---------- */
+  a.btn{text-decoration:none; display:inline-block; text-align:center}
+  .overlay{position:fixed; inset:0; z-index:30; padding:20px; background:rgba(8,9,13,.88);
+    display:none; align-items:center; justify-content:center}
+  .overlay.on{display:flex}
+  .sheet{width:100%; max-width:min(720px,94vw); background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55)}
+  .sheet h3{font-size:15.5px; font-weight:700}
+  .sheet img{width:100%; max-height:56vh; object-fit:contain; border-radius:10px; background:#fff}
+  .sheet .tip{font-size:12px; line-height:1.55; color:var(--muted)}
+  .sheet .tip b{color:var(--ink)}
 
   /* ---------- printing ---------- */
   #printSheet{position:fixed; left:-99999px; top:0; width:100%}
@@ -334,9 +347,9 @@
       <!-- ---------------- SAVE ---------------- -->
       <section class="pane" data-pane="out">
         <div class="hd"><span>💾</span> Save &amp; print</div>
-        <div class="note">Saves at the photo's full size, with everything you can see drawn on top.</div>
+        <div class="note">Saves at the photo's full size, with everything you can see drawn on top. On a phone, press and hold the picture that appears to save it to your camera roll.</div>
         <div class="btns row">
-          <button class="btn primary wide" id="dlPhoto">Download photo + grid (PNG)</button>
+          <button class="btn primary wide" id="dlPhoto">Save photo + grid (PNG)</button>
           <button class="btn wide" id="prPhoto">Print photo + grid</button>
         </div>
         <div class="sep"></div>
@@ -352,7 +365,7 @@
           </div>
         </div>
         <div class="btns row">
-          <button class="btn wide" id="dlPaper">Download paper grid (PNG)</button>
+          <button class="btn wide" id="dlPaper">Save paper grid (PNG)</button>
           <button class="btn wide" id="prPaper">Print paper grid</button>
         </div>
         <div class="sep"></div>
@@ -410,6 +423,20 @@
 
     </div>
   </aside>
+</div>
+
+<div class="overlay" id="ov">
+  <div class="sheet">
+    <h3 id="ovTitle">Your grid</h3>
+    <img id="ovImg" alt="The grid you just made">
+    <p class="tip">On a phone or tablet: <b>press and hold</b> the picture, then <b>Save image</b>.
+       On a computer: <b>Download</b>, or right-click the picture &rarr; <b>Save image as…</b></p>
+    <div class="btns">
+      <a class="btn primary" id="ovDl" download>Download</a>
+      <button class="btn" id="ovPrint">Print</button>
+      <button class="btn ghost" id="ovClose">Close</button>
+    </div>
+  </div>
 </div>
 
 <div id="printSheet"></div>
@@ -1142,11 +1169,21 @@ function paperGrid(){
   x.restore();
   return c.toDataURL('image/png');
 }
-function download(url, name){
-  var a = document.createElement('a');
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
+var lastURL = null;
+/* Shows the finished picture so it can be saved by long-press (phones) or the
+   Download button (desktop) — a scripted download alone is blocked in some viewers. */
+function showResult(url, title, name){
+  lastURL = url;
+  $('#ovImg').src = url;
+  $('#ovTitle').textContent = title;
+  var a = $('#ovDl'); a.href = url; a.download = name;
+  $('#ov').classList.add('on');
 }
+function closeResult(){ $('#ov').classList.remove('on'); }
+$('#ovClose').addEventListener('click', closeResult);
+$('#ov').addEventListener('click', function(e){ if(e.target.id === 'ov') closeResult(); });
+$('#ovPrint').addEventListener('click', function(){ if(lastURL) printURL(lastURL); });
+window.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeResult(); });
 function printURL(url){
   var sheet = $('#printSheet');
   sheet.innerHTML = '';
@@ -1160,9 +1197,13 @@ function needPhoto(){
   alert('Load a photo first.');
   return false;
 }
-$('#dlPhoto').addEventListener('click', function(){ if(needPhoto()) download(exportPhoto(), 'grid-photo.png'); });
+$('#dlPhoto').addEventListener('click', function(){
+  if(needPhoto()) showResult(exportPhoto(), 'Your photo with the grid on it', 'grid-photo.png');
+});
 $('#prPhoto').addEventListener('click', function(){ if(needPhoto()) printURL(exportPhoto()); });
-$('#dlPaper').addEventListener('click', function(){ download(paperGrid(), 'paper-grid.png'); });
+$('#dlPaper').addEventListener('click', function(){
+  showResult(paperGrid(), 'Grid for your drawing paper', 'paper-grid.png');
+});
 $('#prPaper').addEventListener('click', function(){ printURL(paperGrid()); });
 
 /* ============================ go ============================ */
