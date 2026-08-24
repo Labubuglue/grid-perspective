@@ -1,0 +1,23 @@
+# Optional: serve the app behind an existing Traefik instance.
+# Change the Host() rule to the domain you point at this container.
+services:
+  grid:
+    build: .
+    image: grid-perspective:latest
+    container_name: grid-perspective
+    restart: always
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grid.rule=Host(`grid.example.com`)"
+      - "traefik.http.routers.grid.entrypoints=websecure"
+      - "traefik.http.routers.grid.tls=true"
+      - "traefik.http.routers.grid.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.grid.loadbalancer.server.port=80"
+    mem_limit: 128m
+
+networks:
+  proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK:-root_default}
