@@ -218,6 +218,7 @@
         <div class="note">Drag &amp; drop a photo onto the picture area, or press <b>Ctrl/&#8984;+V</b> to paste one.</div>
 
         <label class="chk"><input type="checkbox" id="flip"> Flip horizontally <span style="color:var(--muted)">(checks your proportions)</span></label>
+        <label class="chk"><input type="checkbox" id="upside"> Turn upside down <span style="color:var(--muted)">(breaks recognition hardest)</span></label>
         <label class="chk"><input type="checkbox" id="gray"> Black &amp; white <span style="color:var(--muted)">(see values, not colours)</span></label>
 
         <div class="row" style="margin-top:12px">
@@ -560,10 +561,26 @@
            because everything went on straight from the tube at full strength. Most of what you are
            looking at is <i>medium</i> or <i>weak</i>, knocked back with a little of its opposite.</p>
 
-        <h4>5. Two habits worth keeping</h4>
-        <p><b>Flip horizontally</b> — flip the photo (and your drawing) and mistakes in proportion jump
-           out immediately. <b>Black &amp; white</b> — colour hides value; in grey you can see which
-           shapes are actually dark and which are light.</p>
+        <h4>5. Three habits worth keeping</h4>
+        <p>You do not see with your eyes, you see with your memory. Look at a face and your brain
+           <i>recognises</i> it, hands you the label, and stops measuring — so you draw the symbol you
+           know instead of the shape in front of you. All three of these break that recognition and
+           force you to look again.</p>
+        <ul>
+          <li><b>Flip horizontally.</b> Mirror the photo, and your drawing too. Everyone drifts one
+              direction as they draw; flipped, the drift lands on the side you have no memory of
+              putting it on, and it shouts. Don't hunt for mistakes — just look. What's wrong announces
+              itself in the first two seconds.</li>
+          <li><b>Turn upside down.</b> The strongest version of the same trick: upside down a face
+              stops being a face and becomes a set of shapes and gaps. Hard to draw <i>from</i> at
+              first, brilliant for checking. Do it every twenty minutes or so, not once at the end —
+              the longer an error sits, the more work gets built on top of it.</li>
+          <li><b>Black &amp; white.</b> Colour is loud and it hides value. Value is what makes a drawing
+              read as solid; in grey you notice the "yellow" wall and the "blue" shadow are the same
+              darkness. Pencil work is pure value, so this is the one that matters most right now.</li>
+        </ul>
+        <p>Squinting hard does something similar for free — it throws away detail and leaves the big
+           shapes, which is usually where the real mistake is hiding.</p>
 
         <div class="sep"></div>
         <p style="font-size:11.5px">Your photo never leaves this device — it is not uploaded anywhere.
@@ -599,7 +616,7 @@ var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAl
 
 /* ============================ state ============================ */
 var DEF = {
-  flip:false, gray:false, contrast:100, fade:0, zoom:100,
+  flip:false, upside:false, gray:false, contrast:100, fade:0, zoom:100,
   showGrid:true, square:false, cols:4, rows:4,
   gcolor:'#ffffff', gwidth:1.5, gopacity:90, halo:true, labels:true, diagonals:false, cross:false,
   pmode:'off', rays:14, pverts:true, pvertsN:9, pcolor:'#ff2d55', popacity:70,
@@ -651,6 +668,14 @@ function imageRect(){
   var s = Math.min((cw-pad*2)/img.naturalWidth, (ch-pad*2)/img.naturalHeight) * (S.zoom/100);
   var w = img.naturalWidth*s, h = img.naturalHeight*s;
   return {x:(cw-w)/2, y:(ch-h)/2, w:w, h:h};
+}
+
+function mirrorX(){ return S.flip !== S.upside; }
+function mirrorY(){ return !!S.upside; }
+/* Turn a spot on the screen back into a spot on the actual photo. Without this,
+   cropping or picking a colour off a flipped photo would read the wrong place. */
+function unmirror(n){
+  return { x: mirrorX() ? 1 - n.x : n.x, y: mirrorY() ? 1 - n.y : n.y };
 }
 
 /* normalised (0..1 over the photo) -> a target rect */
@@ -965,10 +990,10 @@ function drawScene(c, rect, k, forExport){
   if(S.gray) f.push('grayscale(1)');
   if(S.contrast !== 100) f.push('contrast(' + S.contrast + '%)');
   if(f.length) c.filter = f.join(' ');
-  if(S.flip){
-    c.translate(rect.x*2 + rect.w, 0); c.scale(-1,1);
-  }
-  c.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+  /* upside down is a half turn, which is both mirrors at once */
+  c.translate(rect.x + rect.w/2, rect.y + rect.h/2);
+  c.scale(mirrorX() ? -1 : 1, mirrorY() ? -1 : 1);
+  c.drawImage(img, -rect.w/2, -rect.h/2, rect.w, rect.h);
   c.restore();
 
   if(S.fade > 0){
@@ -1131,6 +1156,7 @@ bindRange('#pcols','pcols');
 bindRange('#prows','prows');
 
 bindCheck('#flip','flip');
+bindCheck('#upside','upside');
 bindCheck('#gray','gray');
 bindCheck('#showGrid','showGrid');
 bindCheck('#square','square', function(){ if(S.square) syncSquare(); });
@@ -1259,7 +1285,7 @@ cv.addEventListener('pointerdown', function(e){
     }
     return;
   }
-  if(C.picking){ pickFromPhoto(toN(p)); e.preventDefault(); return; }
+  if(C.picking){ pickFromPhoto(unmirror(toN(p))); e.preventDefault(); return; }
   var h = pick(p);
   if(h){ drag = {id:h.id}; }
   else if(S.planeOn && inQuad(p, S.quad.map(function(n){ return P(R,n); }))){
@@ -1582,9 +1608,11 @@ $('#cropRatios').addEventListener('click', function(e){
 $('#cropCancel').addEventListener('click', function(){ cropOff(); draw(); });
 $('#cropApply').addEventListener('click', function(){
   if(!img) return;
-  var W = img.naturalWidth, H = img.naturalHeight;
-  var x = Math.round(CROP.r.x*W), y = Math.round(CROP.r.y*H);
-  var w = Math.max(1, Math.round(CROP.r.w*W)), h = Math.max(1, Math.round(CROP.r.h*H));
+  var W = img.naturalWidth, H = img.naturalHeight, r = CROP.r;
+  var sxN = mirrorX() ? 1 - r.x - r.w : r.x;
+  var syN = mirrorY() ? 1 - r.y - r.h : r.y;
+  var x = Math.round(sxN*W), y = Math.round(syN*H);
+  var w = Math.max(1, Math.round(r.w*W)), h = Math.max(1, Math.round(r.h*H));
   if(w >= W && h >= H){ cropOff(); draw(); return; }
   var cnv = document.createElement('canvas');
   cnv.width = w; cnv.height = h;

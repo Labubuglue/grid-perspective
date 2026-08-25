@@ -15,6 +15,11 @@ Open `index.html` in a browser. Load a photo (choose, drag & drop, or paste).
 3:4, 3:2, 2:3) so it matches your paper. Non-destructive: the original is kept and one button puts it
 back.
 
+**Flip horizontally / Turn upside down / Black & white** — the checking tools. Mirroring or rotating
+breaks the recognition that stops you looking, so proportion errors surface; greyscale strips colour
+so you can judge value. Both mirrors compose, and cropping or picking a colour reads through them, so
+what you frame on screen is what you get.
+
 **Grid** — the classic transfer method. Pick 3×3, 4×4, 5×5 (or set columns and rows yourself),
 label the squares A1/B2, and copy one square at a time. Tick *Square cells* so a square on the
 photo is the same shape as a square on your paper.
