@@ -7,6 +7,11 @@ Everything runs in the browser. **The photo is never uploaded anywhere** — it 
 off your device, and nothing is sent over the network. Settings are remembered on the browser;
 the photo is not.
 
+The page makes **no network requests at all**: no fonts, no scripts, no analytics, no CDN. It uses
+whatever typeface the device already has. Saved to disk it works with the wi-fi off, and nothing
+about anyone using it reaches you, GitHub, or anybody else — which is what you want before handing
+it to a class.
+
 ## Using it
 
 Open `index.html` in a browser. Load a photo (choose, drag & drop, or paste).
@@ -64,8 +69,12 @@ docker compose up -d --build
 
 Set the host rule in `docker-compose.yml` to whatever domain you point at it.
 
+## Licence
+
+MIT — see `LICENSE`. Use it, change it, teach with it, ship your own version.
+
 ## Files
 
-- `index.html` — the whole app (no build step, no dependencies)
+- `index.html` — the whole app (no build step, no dependencies, no network)
 - Hosted with GitHub Pages at https://labubuglue.github.io/grid-perspective/ once Pages is switched on
 - `Dockerfile` / `docker-compose.yml` — optional nginx container
