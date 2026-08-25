@@ -215,6 +215,31 @@
           <div class="lbl">Fade photo <b id="fadeV">0%</b></div>
           <input type="range" id="fade" min="0" max="85" value="0">
         </div>
+        <div class="sep"></div>
+        <div class="hd"><span>&#9986;</span> Crop</div>
+        <div class="btns"><button class="btn wide" id="cropStart">Crop the photo</button></div>
+        <div id="cropPanel" style="display:none">
+          <div class="note" style="margin-top:12px">Drag the corners or edges to choose what to keep.
+            Drag from the middle to move the whole box.</div>
+          <div class="lbl">Shape</div>
+          <div class="btns row" id="cropRatios">
+            <button class="btn on" data-r="0">Free</button>
+            <button class="btn" data-r="1">Square</button>
+            <button class="btn" data-r="1.33333">4:3 wide</button>
+            <button class="btn" data-r="0.75">3:4 tall</button>
+            <button class="btn" data-r="1.5">3:2 wide</button>
+            <button class="btn" data-r="0.66667">2:3 tall</button>
+          </div>
+          <div class="btns">
+            <button class="btn primary" id="cropApply">Keep this bit</button>
+            <button class="btn ghost" id="cropCancel">Cancel</button>
+          </div>
+        </div>
+        <div class="btns" id="cropUndoWrap" style="display:none; margin-top:8px">
+          <button class="btn ghost wide" id="cropReset">Back to the whole photo</button>
+        </div>
+
+        <div class="sep"></div>
         <div class="row">
           <div class="lbl">Room around photo <b id="zoomV">100%</b></div>
           <input type="range" id="zoom" min="35" max="100" value="100">
@@ -452,7 +477,12 @@
 
         <h4>1. Copying a photo with a grid</h4>
         <ol>
-          <li>Load your photo and pick a grid — <b>3×3</b> for a simple shape, <b>4×4</b> or <b>5×5</b>
+          <li><b>Crop first</b>, on the Photo tab — cut away everything you are not going to draw, and
+              pick a shape that matches your paper: <b>3:4 tall</b> or <b>2:3 tall</b> for an upright
+              drawing, <b>4:3 wide</b> or <b>3:2 wide</b> for a wide one. Do it now and the drawing will
+              fit the page; leave it and you will find out halfway through that it doesn't. You can
+              always go <b>back to the whole photo</b> — the crop never damages your file.</li>
+          <li>Pick a grid — <b>3×3</b> for a simple shape, <b>4×4</b> or <b>5×5</b>
               for a face, more only when you need it. More squares = easier but slower.</li>
           <li>Turn on <b>Label the squares</b>, then go to <b>Save</b> and print the
               <b>matching paper grid</b> onto your drawing paper (draw it lightly in pencil).</li>
@@ -924,6 +954,9 @@ function drawScene(c, rect, k, forExport){
     c.restore();
   }
 
+  /* while cropping, nothing else is in the way — just the photo and the box */
+  if(!forExport && CROP.on){ drawCropUI(c, rect); return; }
+
   /* guides carry on past the photo so you can watch them converge — but faintly,
      so the picture stays the thing you are looking at */
   if(!forExport){
@@ -948,7 +981,7 @@ function drawScene(c, rect, k, forExport){
 function draw(){
   R = imageRect();
   drawScene(ctx, R, 1, false);
-  if(img) drawHandles(ctx);
+  if(img && !CROP.on) drawHandles(ctx);
   $('#empty').style.display = img ? 'none' : 'flex';
   updateHint();
 }
@@ -957,6 +990,11 @@ function draw(){
 function updateHint(){
   var h = $('#hint'), t = '';
   if(!img){ h.style.display = 'none'; return; }
+  if(typeof CROP !== 'undefined' && CROP.on){
+    h.innerHTML = 'Drag the <b>corners</b> to choose what to keep, or drag from the middle to move the box. '
+                + 'Then press <b>Keep this bit</b>.';
+    h.style.display = 'block'; return;
+  }
   if(typeof C !== 'undefined' && C.picking){
     h.innerHTML = 'Tap anywhere on the photo to <b>lift that colour</b>.';
     h.style.display = 'block'; return;
@@ -970,18 +1008,22 @@ function updateHint(){
 }
 
 /* ============================ loading a photo ============================ */
+var original = null;   /* the photo as it arrived, so a crop is never destructive */
+function setPhoto(im, isNew){
+  img = im;
+  if(isNew) original = im;
+  srcCanvas = document.createElement('canvas');
+  srcCanvas.width = im.naturalWidth; srcCanvas.height = im.naturalHeight;
+  srcCanvas.getContext('2d').drawImage(im, 0, 0);
+  $('#cropUndoWrap').style.display = (img === original) ? 'none' : 'flex';
+  if(S.square) syncSquare();
+  draw();
+}
 function loadFile(f){
   if(!f || !/^image\//.test(f.type)) return;
   var url = URL.createObjectURL(f);
   var im = new Image();
-  im.onload = function(){
-    img = im;
-    srcCanvas = document.createElement('canvas');
-    srcCanvas.width = im.naturalWidth; srcCanvas.height = im.naturalHeight;
-    srcCanvas.getContext('2d').drawImage(im, 0, 0);
-    if(S.square) syncSquare();
-    draw();
-  };
+  im.onload = function(){ cropOff(); setPhoto(im, true); };
   im.onerror = function(){ alert("Sorry — that file could not be read as a picture."); };
   im.src = url;
 }
@@ -1185,6 +1227,14 @@ function pick(p){
 cv.addEventListener('pointerdown', function(e){
   if(!img) return;
   var p = pos(e);
+  if(CROP.on){
+    var ch = cropHit(p);
+    if(ch){
+      drag = {id:'crop:' + ch, last:toN(p)};
+      cv.setPointerCapture(e.pointerId); e.preventDefault();
+    }
+    return;
+  }
   if(C.picking){ pickFromPhoto(toN(p)); e.preventDefault(); return; }
   var h = pick(p);
   if(h){ drag = {id:h.id}; }
@@ -1196,10 +1246,12 @@ cv.addEventListener('pointerdown', function(e){
 cv.addEventListener('pointermove', function(e){
   var p = pos(e);
   if(!drag){
-    if(img) cv.style.cursor = pick(p) ? 'grab' : 'crosshair';
+    if(CROP.on) cv.style.cursor = CURSORS[cropHit(p)] || 'crosshair';
+    else if(img) cv.style.cursor = pick(p) ? 'grab' : 'crosshair';
     return;
   }
   var n = toN(p);
+  if(drag.id.indexOf('crop:') === 0){ cropDrag(drag.id.slice(5), n, drag); draw(); return; }
   if(drag.id === 'hz')       S.hy = n.y;
   else if(drag.id === 'vp1'){ S.vp1x = n.x; S.hy = n.y; }
   else if(drag.id === 'vpL'){ S.vpLx = n.x; S.hy = n.y; }
@@ -1344,6 +1396,182 @@ $('#dlPaper').addEventListener('click', function(){
   showResult(paperGrid(), 'Grid for your drawing paper', 'paper-grid.png');
 });
 $('#prPaper').addEventListener('click', function(){ printURL(paperGrid()); });
+
+/* ============================ crop ============================
+   The crop box is kept as a fraction of the photo, so it survives zooming
+   and resizing. Cropping never touches the file that was loaded — the
+   original is held so you can always get the whole photo back.
+   ============================================================== */
+var CROP = { on:false, ratio:0, r:{x:0.04, y:0.04, w:0.92, h:0.92} };
+
+function cropScreen(){
+  return { x:R.x + CROP.r.x*R.w, y:R.y + CROP.r.y*R.h, w:CROP.r.w*R.w, h:CROP.r.h*R.h };
+}
+function cropHandles(){
+  var c = cropScreen();
+  var list = [
+    ['nw', c.x, c.y], ['ne', c.x+c.w, c.y], ['se', c.x+c.w, c.y+c.h], ['sw', c.x, c.y+c.h]
+  ];
+  if(!CROP.ratio){
+    list.push(['n', c.x+c.w/2, c.y], ['s', c.x+c.w/2, c.y+c.h],
+              ['w', c.x, c.y+c.h/2], ['e', c.x+c.w, c.y+c.h/2]);
+  }
+  return list;
+}
+function cropHit(p){
+  var hs = cropHandles(), best = null, bd = 20*20, i;
+  for(i=0;i<hs.length;i++){
+    var d = (hs[i][1]-p.x)*(hs[i][1]-p.x) + (hs[i][2]-p.y)*(hs[i][2]-p.y);
+    if(d < bd){ bd = d; best = hs[i][0]; }
+  }
+  if(best) return best;
+  var c = cropScreen();
+  if(p.x > c.x && p.x < c.x+c.w && p.y > c.y && p.y < c.y+c.h) return 'move';
+  return null;
+}
+var CURSORS = {nw:'nwse-resize', se:'nwse-resize', ne:'nesw-resize', sw:'nesw-resize',
+               n:'ns-resize', s:'ns-resize', e:'ew-resize', w:'ew-resize', move:'move'};
+
+function cropDrag(which, n, state){
+  var W = img.naturalWidth, H = img.naturalHeight;
+  var r = CROP.r, MIN = 24;                       /* never smaller than 24px of photo */
+  var px = r.x*W, py = r.y*H, pw = r.w*W, ph = r.h*H;
+  var mx = Math.max(0, Math.min(W, n.x*W)), my = Math.max(0, Math.min(H, n.y*H));
+
+  if(which === 'move'){
+    var dx = (n.x - state.last.x)*W, dy = (n.y - state.last.y)*H;
+    px = Math.max(0, Math.min(W - pw, px + dx));
+    py = Math.max(0, Math.min(H - ph, py + dy));
+    state.last = n;
+  } else {
+    var left = px, top = py, right = px + pw, bottom = py + ph;
+    if(which.indexOf('w') >= 0) left = Math.min(mx, right - MIN);
+    if(which.indexOf('e') >= 0) right = Math.max(mx, left + MIN);
+    if(which.indexOf('n') >= 0) top = Math.min(my, bottom - MIN);
+    if(which.indexOf('s') >= 0) bottom = Math.max(my, top + MIN);
+
+    if(CROP.ratio && which.length === 2){
+      /* corner drag with a fixed shape: the corner opposite stays put */
+      var fx = (which.indexOf('w') >= 0) ? right : left;
+      var fy = (which.indexOf('n') >= 0) ? bottom : top;
+      var w = Math.abs(mx - fx), h = Math.abs(my - fy);
+      if(w / Math.max(h, 0.001) > CROP.ratio) h = w / CROP.ratio; else w = h * CROP.ratio;
+      /* keep it inside the photo */
+      var roomX = (which.indexOf('w') >= 0) ? fx : W - fx;
+      var roomY = (which.indexOf('n') >= 0) ? fy : H - fy;
+      if(w > roomX){ w = roomX; h = w / CROP.ratio; }
+      if(h > roomY){ h = roomY; w = h * CROP.ratio; }
+      w = Math.max(MIN, w); h = Math.max(MIN, h);
+      left   = (which.indexOf('w') >= 0) ? fx - w : fx;
+      right  = left + w;
+      top    = (which.indexOf('n') >= 0) ? fy - h : fy;
+      bottom = top + h;
+    }
+    px = Math.max(0, left); py = Math.max(0, top);
+    pw = Math.min(W, right) - px; ph = Math.min(H, bottom) - py;
+  }
+  CROP.r = { x:px/W, y:py/H, w:pw/W, h:ph/H };
+}
+
+function cropFitRatio(){
+  if(!CROP.ratio) return;
+  var W = img ? img.naturalWidth : 1, H = img ? img.naturalHeight : 1;
+  var cx = (CROP.r.x + CROP.r.w/2)*W, cy = (CROP.r.y + CROP.r.h/2)*H;
+  var w = CROP.r.w*W, h = w/CROP.ratio;
+  if(h > H){ h = H; w = h*CROP.ratio; }
+  if(w > W){ w = W; h = w/CROP.ratio; }
+  var x = Math.max(0, Math.min(W - w, cx - w/2));
+  var y = Math.max(0, Math.min(H - h, cy - h/2));
+  CROP.r = { x:x/W, y:y/H, w:w/W, h:h/H };
+}
+
+function drawCropUI(c, rect){
+  var b = cropScreen();
+  c.save();
+  /* everything you are about to throw away goes dim */
+  c.fillStyle = 'rgba(10,11,15,.66)';
+  c.fillRect(rect.x, rect.y, rect.w, b.y - rect.y);
+  c.fillRect(rect.x, b.y + b.h, rect.w, rect.y + rect.h - (b.y + b.h));
+  c.fillRect(rect.x, b.y, b.x - rect.x, b.h);
+  c.fillRect(b.x + b.w, b.y, rect.x + rect.w - (b.x + b.w), b.h);
+
+  c.strokeStyle = 'rgba(255,255,255,.32)'; c.lineWidth = 1;
+  c.beginPath();
+  for(var i=1;i<3;i++){
+    c.moveTo(b.x + b.w*i/3, b.y); c.lineTo(b.x + b.w*i/3, b.y + b.h);
+    c.moveTo(b.x, b.y + b.h*i/3); c.lineTo(b.x + b.w, b.y + b.h*i/3);
+  }
+  c.stroke();
+
+  c.strokeStyle = '#fff'; c.lineWidth = 1.6;
+  c.strokeRect(b.x, b.y, b.w, b.h);
+
+  /* corner grips, and edge grips when the shape is free */
+  c.lineWidth = 4; c.lineCap = 'round'; c.strokeStyle = '#fff';
+  var L = Math.min(24, b.w/3, b.h/3);
+  var corners = [[b.x,b.y,1,1],[b.x+b.w,b.y,-1,1],[b.x+b.w,b.y+b.h,-1,-1],[b.x,b.y+b.h,1,-1]];
+  c.beginPath();
+  corners.forEach(function(k){
+    c.moveTo(k[0] + k[2]*L, k[1]); c.lineTo(k[0], k[1]); c.lineTo(k[0], k[1] + k[3]*L);
+  });
+  c.stroke();
+  if(!CROP.ratio){
+    c.beginPath();
+    c.moveTo(b.x + b.w/2 - 10, b.y);       c.lineTo(b.x + b.w/2 + 10, b.y);
+    c.moveTo(b.x + b.w/2 - 10, b.y + b.h); c.lineTo(b.x + b.w/2 + 10, b.y + b.h);
+    c.moveTo(b.x, b.y + b.h/2 - 10);       c.lineTo(b.x, b.y + b.h/2 + 10);
+    c.moveTo(b.x + b.w, b.y + b.h/2 - 10); c.lineTo(b.x + b.w, b.y + b.h/2 + 10);
+    c.stroke();
+  }
+
+  if(img){
+    var pw = Math.round(CROP.r.w*img.naturalWidth), ph = Math.round(CROP.r.h*img.naturalHeight);
+    label(c, pw + ' × ' + ph, b.x + b.w/2, b.y + b.h + 16, 12, '#ffffff', 0.9);
+  }
+  c.restore();
+}
+
+function cropOff(){
+  CROP.on = false;
+  $('#cropPanel').style.display = 'none';
+  $('#cropStart').textContent = 'Crop the photo';
+  $('#cropStart').classList.remove('on');
+  updateHint();
+}
+$('#cropStart').addEventListener('click', function(){
+  if(!img){ alert('Load a photo first.'); return; }
+  if(CROP.on){ cropOff(); draw(); return; }
+  CROP.on = true;
+  CROP.r = {x:0.04, y:0.04, w:0.92, h:0.92};
+  cropFitRatio();
+  $('#cropPanel').style.display = 'block';
+  this.textContent = 'Stop cropping';
+  this.classList.add('on');
+  updateHint(); draw();
+});
+$('#cropRatios').addEventListener('click', function(e){
+  var b = e.target.closest('.btn'); if(!b) return;
+  CROP.ratio = parseFloat(b.dataset.r) || 0;
+  $$('#cropRatios .btn').forEach(function(x){ x.classList.toggle('on', x === b); });
+  cropFitRatio(); draw();
+});
+$('#cropCancel').addEventListener('click', function(){ cropOff(); draw(); });
+$('#cropApply').addEventListener('click', function(){
+  if(!img) return;
+  var W = img.naturalWidth, H = img.naturalHeight;
+  var x = Math.round(CROP.r.x*W), y = Math.round(CROP.r.y*H);
+  var w = Math.max(1, Math.round(CROP.r.w*W)), h = Math.max(1, Math.round(CROP.r.h*H));
+  if(w >= W && h >= H){ cropOff(); draw(); return; }
+  var cnv = document.createElement('canvas');
+  cnv.width = w; cnv.height = h;
+  cnv.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
+  var im = new Image();
+  im.onload = function(){ cropOff(); setPhoto(im, false); };
+  im.src = cnv.toDataURL('image/png');
+});
+$('#cropReset').addEventListener('click', function(){
+  if(original){ cropOff(); setPhoto(original, false); }
+});
 
 /* ======================================================================
    COLOUR — a painter's wheel (red / yellow / blue), not a screen wheel.
