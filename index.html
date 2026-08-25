@@ -133,6 +133,19 @@
   .ladder div{border-radius:9px; padding:6px 4px 7px; text-align:center; font-size:10px; font-weight:600;
     color:#0e1015; background:#888; box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
 
+  .recipes{display:flex; flex-direction:column; gap:6px}
+  .rcp{display:flex; align-items:center; gap:10px; width:100%; text-align:left; cursor:pointer;
+    background:#171a22; border:1px solid var(--line); border-radius:11px; padding:7px 10px 7px 7px;
+    font:inherit; color:inherit}
+  .rcp:hover{border-color:#41485c}
+  .rcp.on{border-color:var(--orange); background:#1d212b}
+  .rcp i{width:34px; height:34px; border-radius:8px; flex:0 0 auto;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+  .rcp b{display:block; font-size:12.5px; font-weight:700}
+  .rcp em{display:block; font-style:normal; font-size:10.5px; color:var(--muted); line-height:1.4}
+  .rgroup{font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.06em; margin:12px 0 5px}
+
   /* ---------- save sheet ---------- */
   a.btn{text-decoration:none; display:inline-block; text-align:center}
   .overlay{position:fixed; inset:0; z-index:30; padding:20px; background:rgba(8,9,13,.88);
@@ -433,6 +446,13 @@
         <div class="note" id="mixTip" style="margin-top:10px"></div>
 
         <div class="sep"></div>
+        <div class="hd"><span>&#128203;</span> Common colours, and how to mix them</div>
+        <div class="note">Every one of these comes from just <b>red, yellow and blue</b>. The swatch is
+          made by the recipe beside it, so what you see is what you would get. Tap one to load it into
+          <b>A</b> and mix from there.</div>
+        <div class="recipes" id="recipes"></div>
+
+        <div class="sep"></div>
         <div class="hd"><span>&#128167;</span> Lift a colour off the photo</div>
         <div class="note">Tap this, then tap anywhere on your photo. It tells you the nearest colour on the
           wheel, how strong it is, and what to mix to get there.</div>
@@ -529,6 +549,10 @@
               colours you actually see. Switch between the two and watch the inner rings change.</li>
           <li><b>Mix two colours</b> to see where the mix lands and in what ratio. Neighbours on the wheel
               mix cleanly; colours far apart go muddy.</li>
+          <li><b>Common colours</b> — a list of the ones you actually reach for (skin, grass, sky,
+              brown, terracotta, slate) written as parts of red, yellow and blue. Each swatch is made
+              by running its own recipe through the mixer, so what you see is what the recipe gives.
+              Tap one to load it into A and mix on from there.</li>
           <li><b>Lift a colour off the photo</b> — tap the photo and it names the nearest colour, how strong
               it is, and what to mix to get there.</li>
         </ul>
@@ -1668,22 +1692,28 @@ function simpleRatio(w){
   }
   return best;
 }
-/* say a colour as paint on a palette: "2 parts red + 1 part yellow" */
+/* say a colour the way you would say it at a palette: "2 parts red + 1 part blue" */
+function gcd(a, b){ return b ? gcd(b, a % b) : a; }
 function recipe(c){
-  var f = full(c), parts = [['red',f[0]],['yellow',f[1]],['blue',f[2]]]
-    .filter(function(x){ return x[1] > 0.04; })
-    .sort(function(a,b){ return b[1]-a[1]; });
-  if(!parts.length) return 'nothing — that is the white of the paper';
-  if(parts.length === 1) return parts[0][0] + ' straight, on its own';
-  var r = simpleRatio(parts[1][1] / (parts[0][1] + parts[1][1]));
-  var txt = r[0] + ' part' + (r[0] > 1 ? 's' : '') + ' ' + parts[0][0] +
-            ' + ' + r[1] + ' part' + (r[1] > 1 ? 's' : '') + ' ' + parts[1][0];
-  if(parts.length === 3) txt += ' + a touch of ' + parts[2][0];
-  return txt;
+  var f = full(c), q = [Math.round(f[0]*4), Math.round(f[1]*4), Math.round(f[2]*4)];
+  if(q[0] + q[1] + q[2] === 0) return 'nothing — that is the white of the paper';
+  var d = gcd(gcd(q[0], q[1]), q[2]) || 1;
+  var names = ['red','yellow','blue'], bits = [];
+  for(var i=0;i<3;i++){
+    var n = q[i]/d;
+    if(n) bits.push(n + ' part' + (n > 1 ? 's' : '') + ' ' + names[i]);
+  }
+  return bits.length === 1 ? bits[0].replace(/^1 part /, '') + ' on its own' : bits.join(' + ');
+}
+function strengthPhrase(level, method, ryb){
+  if(!level) return 'at full strength';
+  if(method === 'water') return ['', 'thinned a little', 'watered down', 'watered right down'][level];
+  return 'knocked back with a little ' + HUE_NAMES[(nearestHue(ryb) + 6) % 12].toLowerCase();
 }
 
 /* ---------------- the wheel ---------------- */
-var C = { hue:0, level:0, method:'water', A:hueRYB(8/12), B:hueRYB(4/12), mixW:0.5, picking:false };
+var C = { hue:0, level:0, method:'water', A:hueRYB(8/12), B:hueRYB(4/12),
+          AName:null, BName:null, mixW:0.5, picking:false };
 var wheel = $('#wheel'), wctx = wheel.getContext('2d'), WSIZE = 262;
 (function(){
   var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -1770,18 +1800,18 @@ function syncColour(){
 
   $('#mixAsw').style.background = css(C.A);
   $('#mixBsw').style.background = css(C.B);
-  $('#mixAn').innerHTML = HUE_NAMES[nearestHue(C.A)] + '<em>colour A</em>';
-  $('#mixBn').innerHTML = HUE_NAMES[nearestHue(C.B)] + '<em>colour B</em>';
+  var aN = C.AName || hueLabel(C.A), bN = C.BName || hueLabel(C.B);
+  $('#mixAn').innerHTML = aN + '<em>colour A</em>';
+  $('#mixBn').innerHTML = bN + '<em>colour B</em>';
   var mixed = mixRYB(C.A, C.B, C.mixW);
   var shown = strengthen(mixed, C.level, C.method);
   $('#mixOut').style.background = css(shown);
   $('#mixName').innerHTML = hueLabel(mixed) + '<em>what you get</em>';
   var r = simpleRatio(C.mixW);
   $('#mixRatio').textContent = r[0] + ' : ' + r[1];
-  var aN = HUE_NAMES[nearestHue(C.A)].toLowerCase(), bN = HUE_NAMES[nearestHue(C.B)].toLowerCase();
   var far = Math.min(Math.abs(nearestHue(C.A) - nearestHue(C.B)), 12 - Math.abs(nearestHue(C.A) - nearestHue(C.B)));
-  $('#mixTip').innerHTML = r[0] + ' part' + (r[0] > 1 ? 's' : '') + ' ' + aN + ' + ' + r[1] + ' part' +
-    (r[1] > 1 ? 's' : '') + ' ' + bN + ' &rarr; <b>' + hueLabel(mixed).toLowerCase() + '</b>. ' +
+  $('#mixTip').innerHTML = r[0] + ' part' + (r[0] > 1 ? 's' : '') + ' ' + aN.toLowerCase() + ' + ' + r[1] + ' part' +
+    (r[1] > 1 ? 's' : '') + ' ' + bN.toLowerCase() + ' &rarr; <b>' + hueLabel(mixed).toLowerCase() + '</b>. ' +
     (far >= 5 ? 'These two are near opposites, so the mix goes towards mud — useful when you want a natural '
               + 'grey or brown, a problem when you wanted a colour.'
               : 'Neighbours on the wheel mix cleanly. Colours far apart on the wheel go muddy.');
@@ -1797,9 +1827,70 @@ $('#methods').addEventListener('click', function(e){
   var b = e.target.closest('.btn'); if(!b) return;
   C.method = b.dataset.m; syncColour();
 });
-$('#setA').addEventListener('click', function(){ C.A = hueRYB(C.hue/12); syncColour(); });
-$('#setB').addEventListener('click', function(){ C.B = hueRYB(C.hue/12); syncColour(); });
+$('#setA').addEventListener('click', function(){
+  C.A = hueRYB(C.hue/12); C.AName = null;
+  $$('#recipes .rcp').forEach(function(x){ x.classList.remove('on'); });
+  syncColour();
+});
+$('#setB').addEventListener('click', function(){ C.B = hueRYB(C.hue/12); C.BName = null; syncColour(); });
 $('#mixW').addEventListener('input', function(){ C.mixW = +this.value/100; syncColour(); });
+
+/* Everyday colours, each one written as parts of red / yellow / blue. The swatch
+   is produced by running the recipe through the same mixer as everything else,
+   so the picture and the instructions can never drift apart. */
+var COMMON = [
+  ['Skin &amp; warm', [
+    ['Skin, light',      [1,0.75,0.12], 3, 'water'],
+    ['Skin, deeper',     [1,0.70,0.40], 2, 'water']
+  ]],
+  ['Greens', [
+    ['Grass green',      [0.10,1,0.55], 0, 'water'],
+    ['Deep leaf green',  [0.25,1,1],    0, 'water'],
+    ['Olive',            [0.60,1,0.55], 0, 'water']
+  ]],
+  ['Blues', [
+    ['Sky blue',         [0.12,0,1],    2, 'water'],
+    ['Deep sea blue',    [0.30,0.15,1], 0, 'water'],
+    ['Slate / shadow',   [0.30,0.20,1], 1, 'water']
+  ]],
+  ['Earth', [
+    ['Brown',            [0.90,1,0.60], 0, 'water'],
+    ['Terracotta',       [1,0.65,0.35], 1, 'water'],
+    ['Sand / khaki',     [0.50,1,0.25], 2, 'water']
+  ]],
+  ['Neutrals &amp; darks', [
+    ['Warm grey',        [0.90,0.85,1], 3, 'water'],
+    ['Purple',           [1,0.05,1],    0, 'water'],
+    ['Near black',       [1,1,1],       0, 'water']
+  ]]
+];
+function buildRecipes(){
+  var wrap = $('#recipes');
+  wrap.innerHTML = '';
+  COMMON.forEach(function(group){
+    var h = document.createElement('div');
+    h.className = 'rgroup'; h.innerHTML = group[0];
+    wrap.appendChild(h);
+    group[1].forEach(function(r){
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'rcp';
+      var sw = document.createElement('i');
+      sw.style.background = css(strengthen(r[1], r[2], r[3]));
+      var tx = document.createElement('span');
+      tx.innerHTML = '<b>' + r[0] + '</b><em>' + recipe(r[1]) + ' &middot; ' +
+                     strengthPhrase(r[2], r[3], r[1]) + '</em>';
+      btn.appendChild(sw); btn.appendChild(tx);
+      btn.addEventListener('click', function(){
+        C.A = r[1].slice(); C.AName = r[0];
+        C.level = r[2]; C.method = r[3];
+        $$('#recipes .rcp').forEach(function(x){ x.classList.remove('on'); });
+        btn.classList.add('on');
+        syncColour();
+      });
+      wrap.appendChild(btn);
+    });
+  });
+}
 
 /* ---------------- lifting a colour off the photo ---------------- */
 $('#pickCol').addEventListener('click', function(){
@@ -1850,6 +1941,7 @@ try{
   if(cs){ C.hue = cs.hue|0; C.level = cs.level|0; C.method = cs.method || 'water'; C.mixW = cs.mixW; }
 }catch(e){}
 $('#mixW').value = Math.round(C.mixW*100);
+buildRecipes();
 syncColour();
 markModes(); markPaper();
 $$('#presets .btn').forEach(function(b){
