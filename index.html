@@ -35,7 +35,7 @@
   .stage{flex:1; position:relative; background:
       radial-gradient(700px 380px at 20% -10%, #241b16 0%, transparent 60%),
       radial-gradient(700px 380px at 100% 0%, #241220 0%, transparent 60%), #0e1015;}
-  canvas{position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair}
+  #cv{position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair}
 
   /* ---------- sidebar head ---------- */
   .brand{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line)}
@@ -44,10 +44,10 @@
   .brand h1{font-size:15px;font-weight:700;line-height:1.15}
   .brand p{font-size:11.5px;color:var(--muted);font-weight:500}
 
-  .tabs{display:grid; grid-template-columns:repeat(3,1fr); gap:5px; padding:11px 12px 11px}
+  .tabs{display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:11px 12px 11px}
   .tab{
-    padding:8px 4px; border-radius:9px; border:1px solid var(--line);
-    background:#171a22; color:var(--muted); font:inherit; font-size:11.5px;
+    padding:8px 3px; border-radius:9px; border:1px solid var(--line);
+    background:#171a22; color:var(--muted); font:inherit; font-size:10.5px;
     font-weight:600; cursor:pointer; text-align:center;
   }
   .tab:hover{color:var(--ink)}
@@ -119,6 +119,20 @@
     .brand{padding:10px 14px}
   }
 
+  /* ---------- colour ---------- */
+  #wheel{position:static; display:block; width:262px; max-width:100%; margin:0 auto 12px; cursor:pointer; touch-action:none}
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
+  .chip{display:flex; align-items:center; gap:9px; background:#171a22; border:1px solid var(--line);
+    border-radius:11px; padding:7px 11px 7px 7px; flex:1 1 auto; min-width:0}
+  .chip i{width:32px; height:32px; border-radius:8px; flex:0 0 auto; background:#444;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+  .chip span{font-size:12px; font-weight:600; line-height:1.25; min-width:0}
+  .chip span em{display:block; font-style:normal; font-weight:500; font-size:10.5px; color:var(--muted)}
+  .chip.big i{width:44px; height:44px; border-radius:10px}
+  .ladder{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px}
+  .ladder div{border-radius:9px; padding:6px 4px 7px; text-align:center; font-size:10px; font-weight:600;
+    color:#0e1015; background:#888; box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+
   /* ---------- save sheet ---------- */
   a.btn{text-decoration:none; display:inline-block; text-align:center}
   .overlay{position:fixed; inset:0; z-index:30; padding:20px; background:rgba(8,9,13,.88);
@@ -176,6 +190,7 @@
       <button class="tab" data-pane="grid">Grid</button>
       <button class="tab" data-pane="persp">Perspective</button>
       <button class="tab" data-pane="plane">Plane grid</button>
+      <button class="tab" data-pane="colour">Colour</button>
       <button class="tab" data-pane="out">Save</button>
       <button class="tab" data-pane="help">How to</button>
     </div>
@@ -344,6 +359,65 @@
         <div class="btns"><button class="btn ghost wide" id="resetQuad">Reset the four corners</button></div>
       </section>
 
+      <!-- ---------------- COLOUR ---------------- -->
+      <section class="pane" data-pane="colour">
+        <div class="hd"><span>&#127912;</span> The colour wheel</div>
+        <div class="note">A <b>painter's</b> wheel, not a screen one — red, yellow and blue are the parents
+          of every other colour. <b>Round</b> the wheel is the colour itself. <b>Inwards</b> is its
+          strength: pure, strong, medium, weak. Tap any square.</div>
+
+        <canvas id="wheel"></canvas>
+
+        <div class="chips row">
+          <div class="chip"><i id="cSel"></i><span id="cSelN">Red<em>pure</em></span></div>
+          <div class="chip"><i id="cOpp"></i><span id="cOppN">Green<em>its opposite</em></span></div>
+        </div>
+        <div class="note" id="oppNote"></div>
+
+        <div class="lbl">Strength</div>
+        <div class="btns row" id="strengths">
+          <button class="btn on" data-s="0">Pure</button>
+          <button class="btn" data-s="1">Strong</button>
+          <button class="btn" data-s="2">Medium</button>
+          <button class="btn" data-s="3">Weak</button>
+        </div>
+
+        <div class="lbl">Weaken it by</div>
+        <div class="btns" id="methods">
+          <button class="btn on" data-m="water">Water / white</button>
+          <button class="btn" data-m="opposite">The opposite colour</button>
+        </div>
+        <div class="ladder" id="ladder"></div>
+        <div class="note" id="methodNote"></div>
+
+        <div class="sep"></div>
+        <div class="hd"><span>&#128396;</span> Mix two colours</div>
+        <div class="chips row">
+          <div class="chip"><i id="mixAsw"></i><span id="mixAn">Blue<em>colour A</em></span></div>
+          <div class="chip"><i id="mixBsw"></i><span id="mixBn">Yellow<em>colour B</em></span></div>
+        </div>
+        <div class="btns row">
+          <button class="btn" id="setA">Put mine in A</button>
+          <button class="btn" id="setB">Put mine in B</button>
+        </div>
+        <div class="lbl">More A &nbsp;&larr;&rarr;&nbsp; More B <b id="mixRatio">1 : 1</b></div>
+        <input type="range" id="mixW" min="0" max="100" value="50">
+        <div class="chips" style="margin-top:10px">
+          <div class="chip big"><i id="mixOut"></i><span id="mixName">Green<em>what you get</em></span></div>
+        </div>
+        <div class="note" id="mixTip" style="margin-top:10px"></div>
+
+        <div class="sep"></div>
+        <div class="hd"><span>&#128167;</span> Lift a colour off the photo</div>
+        <div class="note">Tap this, then tap anywhere on your photo. It tells you the nearest colour on the
+          wheel, how strong it is, and what to mix to get there.</div>
+        <div class="btns"><button class="btn wide" id="pickCol">Pick a colour from the photo</button></div>
+        <div id="pickOut" style="display:none; margin-top:12px">
+          <div class="chips"><div class="chip big"><i id="pickSw"></i><span id="pickName"></span></div></div>
+          <div class="note" id="pickRecipe" style="margin-top:10px"></div>
+        </div>
+      </section>
+
       <!-- ---------------- SAVE ---------------- -->
       <section class="pane" data-pane="out">
         <div class="hd"><span>💾</span> Save &amp; print</div>
@@ -411,7 +485,28 @@
            together as they go back: that squashing is what makes a drawing look deep. It also
            extends that surface's edges to show you where the vanishing points and horizon actually are.</p>
 
-        <h4>4. Two habits worth keeping</h4>
+        <h4>4. Colour</h4>
+        <p>The <b>Colour</b> tab is a <b>painter's</b> wheel, not a screen one: red, yellow and blue are
+           the parents of everything else. Round the wheel is the colour; <b>inwards is its strength</b> —
+           pure, strong, medium, weak.</p>
+        <ul>
+          <li><b>Opposites</b> sit across the wheel — red&harr;green, blue&harr;orange, yellow&harr;violet.
+              Side by side they make each other louder. <i>Mixed</i> together they cancel into grey-brown.
+              Same pair, opposite results: that one fact does most of the work in a painting.</li>
+          <li><b>There are two ways to weaken a colour.</b> Water or white makes it <i>paler</i> — reach for
+              white too often and everything goes chalky and pastel. A touch of the <i>opposite</i> colour
+              takes the loudness out without making it paler, which is how you get the quiet, believable
+              colours you actually see. Switch between the two and watch the inner rings change.</li>
+          <li><b>Mix two colours</b> to see where the mix lands and in what ratio. Neighbours on the wheel
+              mix cleanly; colours far apart go muddy.</li>
+          <li><b>Lift a colour off the photo</b> — tap the photo and it names the nearest colour, how strong
+              it is, and what to mix to get there.</li>
+        </ul>
+        <p>Worth knowing: almost nothing in life is a pure colour. Beginners' work often looks garish
+           because everything went on straight from the tube at full strength. Most of what you are
+           looking at is <i>medium</i> or <i>weak</i>, knocked back with a little of its opposite.</p>
+
+        <h4>5. Two habits worth keeping</h4>
         <p><b>Flip horizontally</b> — flip the photo (and your drawing) and mistakes in proportion jump
            out immediately. <b>Black &amp; white</b> — colour hides value; in grey you can see which
            shapes are actually dark and which are light.</p>
@@ -469,10 +564,17 @@ try{
     for(var k in DEF){ if(o[k] !== undefined) S[k] = o[k]; }
   }
 }catch(e){}
-function save(){ try{ localStorage.setItem('levelup.gridapp', JSON.stringify(S)); }catch(e){} }
+function save(){
+  try{
+    var out = JSON.parse(JSON.stringify(S));
+    if(typeof C !== 'undefined'){ out.colour = {hue:C.hue, level:C.level, method:C.method, mixW:C.mixW}; }
+    localStorage.setItem('levelup.gridapp', JSON.stringify(out));
+  }catch(e){}
+}
 
 /* ============================ canvas ============================ */
 var cv = $('#cv'), ctx = cv.getContext('2d');
+var srcCanvas = null;   /* the photo as loaded, with no grid or filters on it */
 var stage = $('#stage');
 var cw = 0, ch = 0;              /* css pixels */
 var R = {x:0,y:0,w:0,h:0};       /* where the photo sits on screen */
@@ -855,6 +957,10 @@ function draw(){
 function updateHint(){
   var h = $('#hint'), t = '';
   if(!img){ h.style.display = 'none'; return; }
+  if(typeof C !== 'undefined' && C.picking){
+    h.innerHTML = 'Tap anywhere on the photo to <b>lift that colour</b>.';
+    h.style.display = 'block'; return;
+  }
   if(S.planeOn) t += 'Drag the <b>four corners</b> onto a flat surface in the photo — floor, table, wall. ';
   if(S.pmode === 'horizon') t += 'Drag the <b>horizon</b> dot to your eye level. ';
   else if(S.pmode !== 'off') t += 'Drag the <b>horizon</b> and the <b>VP</b> dots until the guides sit along the real edges. ';
@@ -870,6 +976,9 @@ function loadFile(f){
   var im = new Image();
   im.onload = function(){
     img = im;
+    srcCanvas = document.createElement('canvas');
+    srcCanvas.width = im.naturalWidth; srcCanvas.height = im.naturalHeight;
+    srcCanvas.getContext('2d').drawImage(im, 0, 0);
     if(S.square) syncSquare();
     draw();
   };
@@ -1075,7 +1184,9 @@ function pick(p){
 }
 cv.addEventListener('pointerdown', function(e){
   if(!img) return;
-  var p = pos(e), h = pick(p);
+  var p = pos(e);
+  if(C.picking){ pickFromPhoto(toN(p)); e.preventDefault(); return; }
+  var h = pick(p);
   if(h){ drag = {id:h.id}; }
   else if(S.planeOn && inQuad(p, S.quad.map(function(n){ return P(R,n); }))){
     drag = {id:'quadMove', last:toN(p)};
@@ -1234,7 +1345,284 @@ $('#dlPaper').addEventListener('click', function(){
 });
 $('#prPaper').addEventListener('click', function(){ printURL(paperGrid()); });
 
+/* ======================================================================
+   COLOUR — a painter's wheel (red / yellow / blue), not a screen wheel.
+   Colours are held as RYB amounts, which is how paint actually behaves:
+   blue + yellow really does make green here, and a colour mixed with its
+   opposite really does go muddy. RYB is converted to screen RGB only at
+   the moment of drawing, by interpolating between eight known paints.
+   ====================================================================== */
+var RYB_CORNERS = [
+  [1,1,1],            /* nothing on the paper = white */
+  [0.163,0.373,0.6],  /* blue   */
+  [1,1,0],            /* yellow */
+  [0,0.66,0.2],       /* green  */
+  [1,0,0],            /* red    */
+  [0.5,0,0.5],        /* violet */
+  [1,0.5,0],          /* orange */
+  [0.2,0.094,0.0]     /* all three together = near black */
+];
+function rybToRgb(c){
+  var r=c[0], y=c[1], b=c[2], out=[0,0,0], w=[
+    (1-r)*(1-y)*(1-b), (1-r)*(1-y)*b, (1-r)*y*(1-b), (1-r)*y*b,
+    r*(1-y)*(1-b),     r*(1-y)*b,     r*y*(1-b),     r*y*b
+  ];
+  for(var k=0;k<3;k++){
+    var v=0;
+    for(var i=0;i<8;i++) v += RYB_CORNERS[i][k]*w[i];
+    out[k] = Math.round(Math.max(0, Math.min(1, v))*255);
+  }
+  return out;
+}
+function css(c){ var p = rybToRgb(c); return 'rgb(' + p[0] + ',' + p[1] + ',' + p[2] + ')'; }
+
+/* one full-strength hue, going round the wheel */
+function hueRYB(t){
+  t = ((t % 1) + 1) % 1;
+  var s = t*6, i = Math.floor(s), f = s - i;
+  if(i === 0) return [1,f,0];
+  if(i === 1) return [1-f,1,0];
+  if(i === 2) return [0,1,f];
+  if(i === 3) return [0,1-f,1];
+  if(i === 4) return [f,0,1];
+  return [1,0,1-f];
+}
+/* the opposite colour is simply the primaries this one is missing */
+function opposite(c){ return [1-c[0], 1-c[1], 1-c[2]]; }
+function full(c){
+  var m = Math.max(c[0], c[1], c[2]);
+  return m > 0.0001 ? [c[0]/m, c[1]/m, c[2]/m] : [0,0,0];
+}
+var HUE_NAMES = ['Red','Red-orange','Orange','Yellow-orange','Yellow','Yellow-green',
+                 'Green','Blue-green','Blue','Blue-violet','Violet','Red-violet'];
+var LEVELS = [
+  {name:'Pure',   water:1.00, neutral:0.00},
+  {name:'Strong', water:0.72, neutral:0.15},
+  {name:'Medium', water:0.46, neutral:0.30},
+  {name:'Weak',   water:0.21, neutral:0.45}
+];
+/* two honest ways to take the strength out of a colour, and they look different */
+function strengthen(c, li, method){
+  var L = LEVELS[li];
+  if(method === 'water') return [c[0]*L.water, c[1]*L.water, c[2]*L.water];
+  var o = opposite(full(c)), m = L.neutral;
+  return [c[0]*(1-m) + o[0]*m, c[1]*(1-m) + o[1]*m, c[2]*(1-m) + o[2]*m];
+}
+function mixRYB(a, b, w){
+  return full([a[0]*(1-w) + b[0]*w, a[1]*(1-w) + b[1]*w, a[2]*(1-w) + b[2]*w]);
+}
+/* which of the twelve is this closest to */
+function nearestHue(c){
+  var f = full(c), best = 0, bd = 1e9;
+  for(var i=0;i<12;i++){
+    var h = hueRYB(i/12);
+    var d = (h[0]-f[0])*(h[0]-f[0]) + (h[1]-f[1])*(h[1]-f[1]) + (h[2]-f[2])*(h[2]-f[2]);
+    if(d < bd){ bd = d; best = i; }
+  }
+  return best;
+}
+/* Once a mix carries all three primaries it stops being a colour and starts
+   being a neutral — naming it by its nearest hue would be a lie. */
+function hueLabel(c){
+  var f = full(c), grey = Math.min(f[0], f[1], f[2]);
+  if(grey >= 0.75) return 'Dark brown — mud';
+  if(grey >= 0.45) return 'Grey-brown';
+  if(grey >= 0.15) return 'Muted ' + HUE_NAMES[nearestHue(c)].toLowerCase();
+  return HUE_NAMES[nearestHue(c)];
+}
+function simpleRatio(w){
+  var opts = [[1,3],[1,2],[2,3],[1,1],[3,2],[2,1],[3,1]];
+  var best = opts[3], bd = 1e9;
+  for(var i=0;i<opts.length;i++){
+    var target = opts[i][1] / (opts[i][0] + opts[i][1]);
+    var d = Math.abs(target - w);
+    if(d < bd){ bd = d; best = opts[i]; }
+  }
+  return best;
+}
+/* say a colour as paint on a palette: "2 parts red + 1 part yellow" */
+function recipe(c){
+  var f = full(c), parts = [['red',f[0]],['yellow',f[1]],['blue',f[2]]]
+    .filter(function(x){ return x[1] > 0.04; })
+    .sort(function(a,b){ return b[1]-a[1]; });
+  if(!parts.length) return 'nothing — that is the white of the paper';
+  if(parts.length === 1) return parts[0][0] + ' straight, on its own';
+  var r = simpleRatio(parts[1][1] / (parts[0][1] + parts[1][1]));
+  var txt = r[0] + ' part' + (r[0] > 1 ? 's' : '') + ' ' + parts[0][0] +
+            ' + ' + r[1] + ' part' + (r[1] > 1 ? 's' : '') + ' ' + parts[1][0];
+  if(parts.length === 3) txt += ' + a touch of ' + parts[2][0];
+  return txt;
+}
+
+/* ---------------- the wheel ---------------- */
+var C = { hue:0, level:0, method:'water', A:hueRYB(8/12), B:hueRYB(4/12), mixW:0.5, picking:false };
+var wheel = $('#wheel'), wctx = wheel.getContext('2d'), WSIZE = 262;
+(function(){
+  var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  wheel.width = WSIZE*dpr; wheel.height = WSIZE*dpr;
+  wheel.style.width = WSIZE + 'px'; wheel.style.height = WSIZE + 'px';
+  wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+})();
+var W_OUT = WSIZE/2 - 4, W_IN = 42;
+
+function drawWheel(){
+  var cx = WSIZE/2, cy = WSIZE/2, i, j;
+  wctx.clearRect(0, 0, WSIZE, WSIZE);
+  var band = (W_OUT - W_IN)/4;
+  for(i=0;i<12;i++){
+    var a0 = (i/12)*Math.PI*2 - Math.PI/2 - Math.PI/12;
+    var a1 = a0 + Math.PI/6;
+    for(j=0;j<4;j++){
+      var r1 = W_OUT - band*j, r0 = r1 - band + 1.5;
+      wctx.beginPath();
+      wctx.arc(cx, cy, r1, a0 + 0.006, a1 - 0.006);
+      wctx.arc(cx, cy, r0, a1 - 0.006, a0 + 0.006, true);
+      wctx.closePath();
+      wctx.fillStyle = css(strengthen(hueRYB(i/12), j, C.method));
+      wctx.fill();
+      if(i === C.hue && j === C.level){
+        wctx.strokeStyle = '#fff'; wctx.lineWidth = 2.5; wctx.stroke();
+        wctx.strokeStyle = 'rgba(0,0,0,.55)'; wctx.lineWidth = 1; wctx.stroke();
+      }
+    }
+  }
+  /* the middle is the paper you are painting on */
+  wctx.beginPath(); wctx.arc(cx, cy, W_IN - 4, 0, Math.PI*2);
+  wctx.fillStyle = '#fff'; wctx.fill();
+  wctx.strokeStyle = 'rgba(255,255,255,.25)'; wctx.lineWidth = 1; wctx.stroke();
+  wctx.fillStyle = '#6b7280';
+  wctx.font = '600 10px Poppins, Helvetica, Arial, sans-serif';
+  wctx.textAlign = 'center'; wctx.textBaseline = 'middle';
+  wctx.fillText('paper', cx, cy);
+}
+wheel.addEventListener('pointerdown', function(e){
+  var r = wheel.getBoundingClientRect();
+  var x = e.clientX - r.left - WSIZE/2, y = e.clientY - r.top - WSIZE/2;
+  var d = Math.hypot(x, y);
+  if(d < W_IN - 4 || d > W_OUT) return;
+  var a = Math.atan2(y, x) + Math.PI/2 + Math.PI/12;
+  var i = Math.floor((((a/(Math.PI*2)) % 1) + 1) % 1 * 12) % 12;
+  var band = (W_OUT - W_IN)/4;
+  var j = Math.max(0, Math.min(3, Math.floor((W_OUT - d)/band)));
+  C.hue = i; C.level = j;
+  syncColour();
+});
+
+function selected(){ return strengthen(hueRYB(C.hue/12), C.level, C.method); }
+
+function syncColour(){
+  var pure = hueRYB(C.hue/12), sel = selected();
+  var opp  = strengthen(opposite(pure), C.level, C.method);
+  $('#cSel').style.background = css(sel);
+  $('#cOpp').style.background = css(opp);
+  $('#cSelN').innerHTML = HUE_NAMES[C.hue] + '<em>' + LEVELS[C.level].name.toLowerCase() + '</em>';
+  $('#cOppN').innerHTML = HUE_NAMES[(C.hue + 6) % 12] + '<em>its opposite</em>';
+  $('#oppNote').innerHTML = 'Put <b>' + HUE_NAMES[(C.hue + 6) % 12].toLowerCase() + '</b> next to <b>' +
+    HUE_NAMES[C.hue].toLowerCase() + '</b> and both look brighter. <b>Mix</b> them instead and they ' +
+    'cancel out into a grey-brown. Same pair, opposite results — that is the most useful thing on this wheel.';
+
+  $$('#strengths .btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.s === C.level); });
+  $$('#methods .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.m === C.method); });
+
+  var lad = $('#ladder');
+  lad.innerHTML = '';
+  for(var j=0;j<4;j++){
+    var d = document.createElement('div');
+    var col = strengthen(pure, j, C.method), rgb = rybToRgb(col);
+    d.style.background = css(col);
+    d.style.color = (rgb[0]*0.299 + rgb[1]*0.587 + rgb[2]*0.114) > 150 ? '#0e1015' : '#fff';
+    d.textContent = LEVELS[j].name;
+    lad.appendChild(d);
+  }
+  $('#methodNote').innerHTML = C.method === 'water'
+    ? 'Watering a colour down (or adding white) keeps the colour but makes it <b>paler</b>. Reach for white '
+      + 'too often and everything goes chalky and pastel.'
+    : 'Adding a little of the <b>opposite</b> colour takes the loudness out without making it paler — that is '
+      + 'how you get the quiet, natural colours you see in real life. Nearly nothing outdoors is pure colour.';
+
+  $('#mixAsw').style.background = css(C.A);
+  $('#mixBsw').style.background = css(C.B);
+  $('#mixAn').innerHTML = HUE_NAMES[nearestHue(C.A)] + '<em>colour A</em>';
+  $('#mixBn').innerHTML = HUE_NAMES[nearestHue(C.B)] + '<em>colour B</em>';
+  var mixed = mixRYB(C.A, C.B, C.mixW);
+  var shown = strengthen(mixed, C.level, C.method);
+  $('#mixOut').style.background = css(shown);
+  $('#mixName').innerHTML = hueLabel(mixed) + '<em>what you get</em>';
+  var r = simpleRatio(C.mixW);
+  $('#mixRatio').textContent = r[0] + ' : ' + r[1];
+  var aN = HUE_NAMES[nearestHue(C.A)].toLowerCase(), bN = HUE_NAMES[nearestHue(C.B)].toLowerCase();
+  var far = Math.min(Math.abs(nearestHue(C.A) - nearestHue(C.B)), 12 - Math.abs(nearestHue(C.A) - nearestHue(C.B)));
+  $('#mixTip').innerHTML = r[0] + ' part' + (r[0] > 1 ? 's' : '') + ' ' + aN + ' + ' + r[1] + ' part' +
+    (r[1] > 1 ? 's' : '') + ' ' + bN + ' &rarr; <b>' + hueLabel(mixed).toLowerCase() + '</b>. ' +
+    (far >= 5 ? 'These two are near opposites, so the mix goes towards mud — useful when you want a natural '
+              + 'grey or brown, a problem when you wanted a colour.'
+              : 'Neighbours on the wheel mix cleanly. Colours far apart on the wheel go muddy.');
+  drawWheel();
+  save();
+}
+
+$('#strengths').addEventListener('click', function(e){
+  var b = e.target.closest('.btn'); if(!b) return;
+  C.level = +b.dataset.s; syncColour();
+});
+$('#methods').addEventListener('click', function(e){
+  var b = e.target.closest('.btn'); if(!b) return;
+  C.method = b.dataset.m; syncColour();
+});
+$('#setA').addEventListener('click', function(){ C.A = hueRYB(C.hue/12); syncColour(); });
+$('#setB').addEventListener('click', function(){ C.B = hueRYB(C.hue/12); syncColour(); });
+$('#mixW').addEventListener('input', function(){ C.mixW = +this.value/100; syncColour(); });
+
+/* ---------------- lifting a colour off the photo ---------------- */
+$('#pickCol').addEventListener('click', function(){
+  if(!img){ alert('Load a photo first, on the Photo tab.'); return; }
+  C.picking = !C.picking;
+  this.classList.toggle('on', C.picking);
+  this.textContent = C.picking ? 'Now tap the photo…' : 'Pick a colour from the photo';
+  cv.style.cursor = C.picking ? 'crosshair' : 'crosshair';
+  updateHint();
+});
+function pickFromPhoto(n){
+  if(!srcCanvas) return;
+  var x = Math.max(0, Math.min(img.naturalWidth - 1,  Math.round(n.x*img.naturalWidth)));
+  var y = Math.max(0, Math.min(img.naturalHeight - 1, Math.round(n.y*img.naturalHeight)));
+  var d = srcCanvas.getContext('2d').getImageData(x, y, 1, 1).data;
+  /* find the closest paint we could actually mix */
+  var best = null, bd = 1e9;
+  for(var i=0;i<72;i++){
+    for(var j=0;j<4;j++){
+      for(var m=0;m<2;m++){
+        var method = m ? 'opposite' : 'water';
+        var c = strengthen(hueRYB(i/72), j, method), rgb = rybToRgb(c);
+        var dist = (rgb[0]-d[0])*(rgb[0]-d[0]) + (rgb[1]-d[1])*(rgb[1]-d[1]) + (rgb[2]-d[2])*(rgb[2]-d[2]);
+        if(dist < bd){ bd = dist; best = {t:i/72, level:j, method:method, ryb:c}; }
+      }
+    }
+  }
+  var hue = hueRYB(best.t), hi = nearestHue(hue);
+  $('#pickOut').style.display = 'block';
+  $('#pickSw').style.background = 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')';
+  $('#pickName').innerHTML = HUE_NAMES[hi] + '<em>' + LEVELS[best.level].name.toLowerCase() +
+    (best.level ? (best.method === 'water' ? ', watered down' : ', knocked back with its opposite') : '') + '</em>';
+  $('#pickRecipe').innerHTML = 'Mix <b>' + recipe(hue) + '</b>' +
+    (best.level === 0 ? ', and use it at full strength.'
+      : (best.method === 'water'
+          ? ', then water it down to <b>' + LEVELS[best.level].name.toLowerCase() + '</b>.'
+          : ', then knock it back with a little <b>' + HUE_NAMES[(hi + 6) % 12].toLowerCase() +
+            '</b> until it is <b>' + LEVELS[best.level].name.toLowerCase() + '</b>.'));
+  C.picking = false;
+  $('#pickCol').classList.remove('on');
+  $('#pickCol').textContent = 'Pick another colour';
+  updateHint();
+}
+
 /* ============================ go ============================ */
+try{
+  var cs = JSON.parse(localStorage.getItem('levelup.gridapp') || '{}').colour;
+  if(cs){ C.hue = cs.hue|0; C.level = cs.level|0; C.method = cs.method || 'water'; C.mixW = cs.mixW; }
+}catch(e){}
+$('#mixW').value = Math.round(C.mixW*100);
+syncColour();
 markModes(); markPaper();
 $$('#presets .btn').forEach(function(b){
   b.classList.toggle('on', parseInt(b.dataset.n,10) === S.cols && S.cols === S.rows);

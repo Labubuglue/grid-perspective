@@ -32,6 +32,13 @@ the photo (floor, table top, wall) and the app splits it into true perspective s
 shrink as they go back. It also extends that surface's own edges until they meet, which shows
 you where the vanishing points and the real horizon actually are.
 
+**Colour** — a painter's wheel (red / yellow / blue), so the opposites are the ones that matter when
+you paint: red&harr;green, blue&harr;orange, yellow&harr;violet. Round the wheel is the colour, inwards is
+its strength — pure, strong, medium, weak. Mixing is done in RYB, so blue + yellow really makes green
+and a colour mixed with its opposite really goes muddy. Two ways to weaken a colour are shown side by
+side: water/white (paler) versus a touch of the opposite colour (quieter, not paler). You can also tap
+the photo to lift a colour off it and be told what to mix to match it.
+
 **Save** — download or print the photo with everything drawn on it, and download or print the
 matching blank grid for your paper (A4 upright, A4 sideways, or the photo's own shape).
 
@@ -49,4 +56,5 @@ Set the host rule in `docker-compose.yml` to whatever domain you point at it.
 ## Files
 
 - `index.html` — the whole app (no build step, no dependencies)
+- Hosted with GitHub Pages at https://labubuglue.github.io/grid-perspective/ once Pages is switched on
 - `Dockerfile` / `docker-compose.yml` — optional nginx container
