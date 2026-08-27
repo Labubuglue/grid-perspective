@@ -101,6 +101,19 @@
   .empty .btn{pointer-events:auto; flex:0 0 auto; padding:11px 20px; font-size:13px}
   .stage.drag::after{content:""; position:absolute; inset:12px; border:2px dashed var(--orange); border-radius:16px}
 
+  .zoomer{
+    position:absolute; right:14px; bottom:14px; display:none; gap:2px; align-items:stretch;
+    background:rgba(18,20,26,.86); border:1px solid var(--line); border-radius:10px; padding:3px;
+    backdrop-filter:blur(4px); z-index:5;
+  }
+  .zoomer.on{display:flex}
+  .zoomer button{
+    border:none; background:transparent; color:var(--ink); font:inherit; font-size:13px; font-weight:700;
+    padding:6px 10px; border-radius:7px; cursor:pointer; min-width:34px;
+  }
+  .zoomer button:hover{background:#262b38}
+  .zoomer #zLabel{font-size:12px; font-weight:600; min-width:52px; color:var(--muted)}
+
   .hint{
     position:absolute; left:14px; bottom:14px; font-size:11.5px; color:var(--muted);
     background:rgba(18,20,26,.82); border:1px solid var(--line); border-radius:9px; padding:7px 11px;
@@ -182,6 +195,11 @@
       <button class="btn primary" id="pickBtn">Choose a photo</button>
     </div>
     <div class="hint" id="hint"></div>
+    <div class="zoomer" id="zoomer">
+      <button id="zOut" title="Zoom out">&minus;</button>
+      <button id="zLabel" title="Fit the whole photo">100%</button>
+      <button id="zIn" title="Zoom in">+</button>
+    </div>
     <input type="file" id="file" accept="image/*" hidden>
   </div>
 
@@ -253,10 +271,15 @@
 
         <div class="sep"></div>
         <div class="row">
-          <div class="lbl">Room around photo <b id="zoomV">100%</b></div>
-          <input type="range" id="zoom" min="35" max="100" value="100">
-          <div class="note" style="margin:8px 0 0">Zoom out to make space around the photo — you need it when a
-            <b>vanishing point sits off the edge</b> of the picture.</div>
+          <div class="lbl">Zoom <b id="zoomV">100%</b></div>
+          <input type="range" id="zoom" min="25" max="400" value="100">
+          <div class="btns" style="margin-top:8px">
+            <button class="btn wide" id="zoomFit">Fit the whole photo</button>
+          </div>
+          <div class="note" style="margin:8px 0 0"><b>Pinch</b>, or roll the mouse wheel, to zoom in close
+            for small shapes. To move around: drag with <b>two fingers</b>, or hold <b>Space</b> and drag,
+            or just drag the photo when the Shapes tool is <b>Off</b>. Below 100% you get space around the
+            photo, which is what you need when a <b>vanishing point sits off the edge</b>.</div>
         </div>
       </section>
 
@@ -597,6 +620,11 @@
           <li>Stop. Do not draw eyelashes on the photo — the point is to prove the big shapes are right
               <i>before</i> you spend an hour on detail that sits in the wrong place.</li>
         </ol>
+        <p><b>Zoom right in for the small stuff.</b> Pinch, or roll the mouse wheel, or use the
+           <b>&minus; / + </b> buttons in the corner of the picture. To move around: two fingers, or hold
+           <b>Space</b> and drag, or just drag the photo with the shape tool set to <b>Off</b>. Tap the
+           percentage to fit the whole photo again. Shapes are stored against the photo, not the screen,
+           so one placed at 400% sits exactly where you put it when you zoom back out.</p>
         <p>Nothing you draw is stuck. Hit <b>Select &amp; edit</b> and tap a shape: drag the
            <b>white squares</b> to reshape it, the <b>orange dot</b> to turn it, or the middle to move
            it — and <b>Delete this shape</b> (or the Delete key) to get rid of just that one. A newly
@@ -760,12 +788,40 @@ function fitCanvas(){
 }
 window.addEventListener('resize', fitCanvas);
 
+var VIEW = { ox:0, oy:0 };          /* how far the photo has been dragged */
+function fitScale(){
+  var pad = 14;
+  return Math.min((cw-pad*2)/img.naturalWidth, (ch-pad*2)/img.naturalHeight);
+}
 function imageRect(){
   if(!img) return {x:0,y:0,w:cw,h:ch};
-  var pad = 14;
-  var s = Math.min((cw-pad*2)/img.naturalWidth, (ch-pad*2)/img.naturalHeight) * (S.zoom/100);
-  var w = img.naturalWidth*s, h = img.naturalHeight*s;
-  return {x:(cw-w)/2, y:(ch-h)/2, w:w, h:h};
+  var sc = fitScale() * (S.zoom/100);
+  var w = img.naturalWidth*sc, h = img.naturalHeight*sc;
+  return { x:(cw-w)/2 + VIEW.ox, y:(ch-h)/2 + VIEW.oy, w:w, h:h };
+}
+/* never let the photo be dragged completely out of sight */
+function clampPan(){
+  if(!img) return;
+  var sc = fitScale() * (S.zoom/100);
+  var w = img.naturalWidth*sc, h = img.naturalHeight*sc;
+  var mx = Math.max(0, (w-cw)/2) + cw*0.35, my = Math.max(0, (h-ch)/2) + ch*0.35;
+  VIEW.ox = Math.max(-mx, Math.min(mx, VIEW.ox));
+  VIEW.oy = Math.max(-my, Math.min(my, VIEW.oy));
+}
+function setZoom(z, anchor){
+  z = Math.max(25, Math.min(800, z));
+  if(Math.abs(z - S.zoom) < 0.01) return;
+  var n = anchor && img ? toN(anchor) : null;
+  S.zoom = z;
+  R = imageRect();
+  if(n){                                    /* keep the spot under the finger still */
+    var q = P(R, n);
+    VIEW.ox += anchor.x - q.x; VIEW.oy += anchor.y - q.y;
+  }
+  if(S.zoom <= 100 && !anchor){ VIEW.ox = 0; VIEW.oy = 0; }
+  clampPan();
+  syncZoomUI();
+  save(); draw();
 }
 
 function mirrorX(){ return S.flip !== S.upside; }
@@ -1141,6 +1197,7 @@ function draw(){
   drawScene(ctx, R, 1, false);
   if(img && !CROP.on){ drawHandles(ctx); drawGrips(ctx); }
   $('#empty').style.display = img ? 'none' : 'flex';
+  $('#zoomer').classList.toggle('on', !!img);
   updateHint();
 }
 
@@ -1183,7 +1240,7 @@ function setPhoto(im, isNew){
   srcCanvas.width = im.naturalWidth; srcCanvas.height = im.naturalHeight;
   srcCanvas.getContext('2d').drawImage(im, 0, 0);
   $('#cropUndoWrap').style.display = (img === original) ? 'none' : 'flex';
-  if(isNew){ SHAPES = []; SH.drawing = null; shapeCount(); saveShapes(); }
+  if(isNew){ SHAPES = []; SH.drawing = null; shapeCount(); saveShapes(); VIEW.ox = 0; VIEW.oy = 0; }
   buildValues();
   if(S.square) syncSquare();
   draw();
@@ -1264,7 +1321,7 @@ var pct = function(v){ return v + '%'; };
 
 bindRange('#contrast','contrast',pct);
 bindRange('#fade','fade',pct);
-bindRange('#zoom','zoom',pct);
+$('#zoom').addEventListener('input', function(){ setZoom(parseFloat(this.value)); });
 bindRange('#cols','cols');
 bindRange('#rows','rows');
 bindRange('#gwidth','gwidth');
@@ -1341,9 +1398,10 @@ function fitHandles(){
     if(ex > 0.5) z = Math.min(z, (cw/2 - pad)/ex);
     if(ey > 0.5) z = Math.min(z, (ch/2 - pad)/ey);
   });
-  z = Math.max(0.35, Math.min(S.zoom/100, z));
+  z = Math.max(0.25, Math.min(S.zoom/100, z));
   S.zoom = Math.round(z*100);
   $('#zoom').value = S.zoom; $('#zoomV').textContent = S.zoom + '%';
+  clampPan();
 }
 $('#pmodes').addEventListener('click', function(e){
   var b = e.target.closest('.btn');
@@ -1382,6 +1440,63 @@ $('#resetAll').addEventListener('click', function(){
 
 /* ============================ dragging ============================ */
 var drag = null;
+var PT = new Map(), PINCH = null, spaceDown = false;
+
+function pinchInfo(){
+  var a = [], it = PT.values(), v;
+  while(!(v = it.next()).done) a.push(v.value);
+  var dx = a[1].x - a[0].x, dy = a[1].y - a[0].y;
+  return { d: Math.hypot(dx, dy) || 1, c: { x:(a[0].x + a[1].x)/2, y:(a[0].y + a[1].y)/2 } };
+}
+function startPinch(){
+  SH.drawing = null; drag = null;
+  R = imageRect();
+  var i = pinchInfo();
+  PINCH = { d0:i.d, z0:S.zoom, ox0:VIEW.ox, oy0:VIEW.oy, n0:toN(i.c) };
+}
+/* zoom by the change in finger spacing, keeping the point between them still */
+function pinchMove(){
+  if(!PINCH || !img) return;
+  var i = pinchInfo();
+  S.zoom = Math.max(25, Math.min(800, PINCH.z0 * (i.d/PINCH.d0)));
+  VIEW.ox = PINCH.ox0; VIEW.oy = PINCH.oy0;
+  R = imageRect();
+  var q = P(R, PINCH.n0);
+  VIEW.ox = PINCH.ox0 + (i.c.x - q.x);
+  VIEW.oy = PINCH.oy0 + (i.c.y - q.y);
+  clampPan();
+  syncZoomUI();
+  draw();
+}
+cv.addEventListener('wheel', function(e){
+  if(!img) return;
+  e.preventDefault();
+  setZoom(S.zoom * Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0022)), pos(e));
+}, { passive:false });
+window.addEventListener('keydown', function(e){
+  if(e.code === 'Space' && !/^(INPUT|TEXTAREA)$/.test(e.target.tagName || '')){
+    spaceDown = true; e.preventDefault();
+  }
+});
+window.addEventListener('keyup', function(e){ if(e.code === 'Space') spaceDown = false; });
+function syncZoomUI(){
+  var z = Math.round(S.zoom);
+  $('#zoom').value = z;
+  $('#zoomV').textContent = z + '%';
+  $('#zLabel').textContent = z + '%';
+  $('#zoomer').classList.toggle('on', !!img);
+}
+function fitPhoto(){
+  VIEW.ox = 0; VIEW.oy = 0; S.zoom = 100;
+  syncZoomUI(); save(); draw();
+}
+$('#zOut').addEventListener('click', function(){ setZoom(S.zoom/1.3); });
+$('#zIn').addEventListener('click', function(){ setZoom(S.zoom*1.3); });
+$('#zLabel').addEventListener('click', fitPhoto);
+$('#zoomFit').addEventListener('click', fitPhoto);
+
+/* capturing a pointer that has already gone throws in some browsers */
+function grab(e){ try{ cv.setPointerCapture(e.pointerId); }catch(err){} }
 function pos(e){
   var r = cv.getBoundingClientRect();
   return {x:e.clientX - r.left, y:e.clientY - r.top};
@@ -1397,11 +1512,19 @@ function pick(p){
 cv.addEventListener('pointerdown', function(e){
   if(!img) return;
   var p = pos(e);
+  PT.set(e.pointerId, p);
+  if(PT.size === 2){ startPinch(); e.preventDefault(); return; }
+  if(PT.size > 2) return;
+  if(spaceDown){
+    drag = {id:'pan', last:p};
+    grab(e); e.preventDefault();
+    return;
+  }
   if(CROP.on){
     var ch = cropHit(p);
     if(ch){
       drag = {id:'crop:' + ch, last:toN(p)};
-      cv.setPointerCapture(e.pointerId); e.preventDefault();
+      grab(e); e.preventDefault();
     }
     return;
   }
@@ -1410,7 +1533,7 @@ cv.addEventListener('pointerdown', function(e){
     var gr = gripAt(p);
     if(gr){
       drag = {id:'grip:' + gr, last:applyMirror(R, p)};
-      cv.setPointerCapture(e.pointerId); e.preventDefault();
+      grab(e); e.preventDefault();
       return;
     }
     if(SH.tool === 'select'){
@@ -1418,7 +1541,7 @@ cv.addEventListener('pointerdown', function(e){
       selectShape(hit);
       if(hit != null){
         drag = {id:'smove', last:applyMirror(R, p)};
-        cv.setPointerCapture(e.pointerId);
+        grab(e);
       }
       e.preventDefault();
       return;
@@ -1426,7 +1549,7 @@ cv.addEventListener('pointerdown', function(e){
     var n0 = unmirror(toN(p));
     SH.drawing = { t:SH.tool, pts:[n0, n0], c:SH.color, w:SH.width, r:0 };
     drag = {id:'shape'};
-    cv.setPointerCapture(e.pointerId); e.preventDefault();
+    grab(e); e.preventDefault();
     draw();
     return;
   }
@@ -1435,10 +1558,18 @@ cv.addEventListener('pointerdown', function(e){
   else if(S.planeOn && inQuad(p, S.quad.map(function(n){ return P(R,n); }))){
     drag = {id:'quadMove', last:toN(p)};
   }
-  if(drag){ cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+  if(!drag && SH.tool === 'off') drag = {id:'pan', last:p};
+  if(drag){ grab(e); e.preventDefault(); }
 });
 cv.addEventListener('pointermove', function(e){
   var p = pos(e);
+  if(PT.has(e.pointerId)) PT.set(e.pointerId, p);
+  if(PT.size >= 2){ pinchMove(); e.preventDefault(); return; }
+  if(drag && drag.id === 'pan'){
+    VIEW.ox += p.x - drag.last.x; VIEW.oy += p.y - drag.last.y;
+    drag.last = p; clampPan(); cv.style.cursor = 'grabbing'; draw();
+    return;
+  }
   if(!drag){
     if(CROP.on) cv.style.cursor = CURSORS[cropHit(p)] || 'crosshair';
     else if(img) cv.style.cursor = pick(p) ? 'grab' : 'crosshair';
@@ -1470,7 +1601,10 @@ cv.addEventListener('pointermove', function(e){
   draw();
 });
 function endDrag(e){
+  if(e && e.pointerId !== undefined) PT.delete(e.pointerId);
+  if(PT.size < 2 && PINCH){ PINCH = null; save(); }
   if(!drag) return;
+  if(drag.id === 'pan'){ drag = null; cv.style.cursor = 'crosshair'; return; }
   if(drag.id === 'shape' && SH.drawing){
     var d = SH.drawing, keep;
     if(d.t === 'free') keep = d.pts.length > 3;
@@ -2407,7 +2541,7 @@ try{
   if(cs){ C.hue = cs.hue|0; C.level = cs.level|0; C.method = cs.method || 'water'; C.mixW = cs.mixW; }
 }catch(e){}
 $('#mixW').value = Math.round(C.mixW*100);
-markTools(); shapeCount(); selectShape(null);
+markTools(); shapeCount(); selectShape(null); syncZoomUI();
 $$('#valueSteps .btn').forEach(function(b){ b.classList.toggle('on', (parseInt(b.dataset.v,10)||0) === S.levels); });
 buildRecipes();
 syncColour();

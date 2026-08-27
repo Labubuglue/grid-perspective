@@ -16,6 +16,10 @@ it to a class.
 
 Open `index.html` in a browser. Load a photo (choose, drag & drop, or paste).
 
+**Zoom & pan** — pinch, mouse wheel, or the − / + control on the picture; two-finger drag, Space+drag,
+or drag the photo with no shape tool active to move around. 25%–800%. Everything is stored against the
+photo rather than the screen, so a shape placed at 400% lands exactly there when you zoom back out.
+
 **Crop** — trim the photo to the bit you want to draw, free-form or locked to a shape (square, 4:3,
 3:4, 3:2, 2:3) so it matches your paper. Non-destructive: the original is kept and one button puts it
 back.
