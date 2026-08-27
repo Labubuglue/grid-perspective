@@ -200,6 +200,7 @@
       <button class="tab" data-pane="grid">Grid</button>
       <button class="tab" data-pane="persp">Perspective</button>
       <button class="tab" data-pane="plane">Plane grid</button>
+      <button class="tab" data-pane="shapes">Shapes</button>
       <button class="tab" data-pane="colour">Colour</button>
       <button class="tab" data-pane="out">Save</button>
       <button class="tab" data-pane="help">How to</button>
@@ -395,6 +396,61 @@
         <div class="btns"><button class="btn ghost wide" id="resetQuad">Reset the four corners</button></div>
       </section>
 
+      <!-- ---------------- SHAPES ---------------- -->
+      <section class="pane" data-pane="shapes">
+        <div class="hd"><span>&#9711;</span> Block it in with shapes</div>
+        <div class="note">Before any detail, find the <b>big simple shapes</b> — the head is an egg, the
+          eye is a circle, the collar is a wedge. Draw them straight onto the photo here. Get those few
+          shapes in the right place and the drawing is already right; get them wrong and no amount of
+          eyelashes will save it.</div>
+
+        <div class="lbl">Shape</div>
+        <div class="btns row" id="shapeTools">
+          <button class="btn" data-t="off">Off</button>
+          <button class="btn on" data-t="oval">Oval</button>
+          <button class="btn" data-t="box">Box</button>
+        </div>
+        <div class="btns row" style="margin-top:-8px">
+          <button class="btn" data-t="tri">Triangle</button>
+          <button class="btn" data-t="line">Line</button>
+          <button class="btn" data-t="free">Freehand</button>
+        </div>
+
+        <div class="row">
+          <div class="lbl">Colour</div>
+          <div class="swatches" id="scolors">
+            <div class="sw on" data-c="#ff2d55" style="background:#ff2d55"></div>
+            <div class="sw" data-c="#ffffff" style="background:#ffffff"></div>
+            <div class="sw" data-c="#00e5ff" style="background:#00e5ff"></div>
+            <div class="sw" data-c="#ffe600" style="background:#ffe600"></div>
+            <div class="sw" data-c="#00ff85" style="background:#00ff85"></div>
+            <input type="color" id="scolor" value="#ff2d55">
+          </div>
+        </div>
+        <div class="row">
+          <div class="lbl">Thickness <b id="swidthV">3</b></div>
+          <input type="range" id="swidth" min="1" max="10" step="0.5" value="3">
+        </div>
+        <div class="btns row">
+          <button class="btn" id="shapeUndo">Undo last</button>
+          <button class="btn ghost" id="shapeClear">Clear all</button>
+        </div>
+        <div class="note" id="shapeCount">Nothing drawn yet.</div>
+
+        <div class="sep"></div>
+        <div class="hd"><span>&#9680;</span> Flatten it into tones</div>
+        <div class="note">Squashes the photo down to a few flat greys, so the <b>big shapes stop hiding
+          behind the detail</b>. Two tones is the harshest and the most useful — whatever survives at
+          two tones is the drawing.</div>
+        <div class="btns" id="valueSteps">
+          <button class="btn on" data-v="0">Off</button>
+          <button class="btn" data-v="2">2</button>
+          <button class="btn" data-v="3">3</button>
+          <button class="btn" data-v="4">4</button>
+          <button class="btn" data-v="5">5</button>
+        </div>
+      </section>
+
       <!-- ---------------- COLOUR ---------------- -->
       <section class="pane" data-pane="colour">
         <div class="hd"><span>&#127912;</span> The colour wheel</div>
@@ -511,7 +567,28 @@
         <p>Tip: tick <b>Square cells</b> so a square on the photo is the same shape as a square on your
            paper. Then your drawing keeps the photo's proportions.</p>
 
-        <h4>2. Finding the perspective</h4>
+        <h4>2. Blocking in with simple shapes</h4>
+        <p>The grid tells you <i>where</i> things sit. Blocking in tells you <i>what shape</i> they are.
+           On the <b>Shapes</b> tab you draw ovals, boxes, triangles and lines straight onto the photo —
+           the head is an egg, the eye socket is a circle, a collar is a wedge.</p>
+        <ol>
+          <li>Find the <b>single biggest shape</b> first and draw it. On a portrait that is the whole
+              head — one oval, tilted the way the head is tilted.</li>
+          <li>Then the next size down: the jaw, the hair mass, the shoulders. Still no features.</li>
+          <li>Only then the smaller shapes: eye sockets, nose, mouth. Each one is a simple shape sitting
+              inside a bigger one you already placed.</li>
+          <li>Stop. Do not draw eyelashes on the photo — the point is to prove the big shapes are right
+              <i>before</i> you spend an hour on detail that sits in the wrong place.</li>
+        </ol>
+        <p><b>Flatten it into tones</b> is the other half of this. It squashes the photo into two or three
+           flat greys, which throws away the detail your eye keeps getting distracted by and leaves the
+           big masses of light and dark. Turn it on at 2 tones, and the shapes you should be blocking in
+           are suddenly obvious. Whatever still reads at two tones is the drawing; everything else is
+           decoration.</p>
+        <p>Both save and print with the photo, so you can put your blocked-in version next to your paper
+           and copy shape by shape.</p>
+
+        <h4>3. Finding the perspective</h4>
         <ul>
           <li>The <b>horizon</b> is your eye level. Things above it you see the underside of; things
               below it you see the top of. Drag the horizon line until it feels right.</li>
@@ -526,14 +603,14 @@
         <p>Drag the round handles. When your guide lines lie along the real edges in the photo, you have
            found that photo's perspective — that's the shortcut to seeing it by eye later.</p>
 
-        <h4>3. Grid in perspective</h4>
+        <h4>4. Grid in perspective</h4>
         <p>A normal grid is flat, so it can't tell you how much things shrink with distance. The
            <b>Plane grid</b> tab lays a grid onto a surface <i>inside</i> the photo — floor, table,
            wall — and splits it into real perspective squares. Watch how quickly the rows squash
            together as they go back: that squashing is what makes a drawing look deep. It also
            extends that surface's edges to show you where the vanishing points and horizon actually are.</p>
 
-        <h4>4. Colour</h4>
+        <h4>5. Colour</h4>
         <p>The <b>Colour</b> tab is a <b>painter's</b> wheel, not a screen one: red, yellow and blue are
            the parents of everything else. Round the wheel is the colour; <b>inwards is its strength</b> —
            pure, strong, medium, weak.</p>
@@ -558,7 +635,7 @@
            because everything went on straight from the tube at full strength. Most of what you are
            looking at is <i>medium</i> or <i>weak</i>, knocked back with a little of its opposite.</p>
 
-        <h4>5. Three habits worth keeping</h4>
+        <h4>6. Three habits worth keeping</h4>
         <p>You do not see with your eyes, you see with your memory. Look at a face and your brain
            <i>recognises</i> it, hands you the label, and stops measuring — so you draw the symbol you
            know instead of the shape in front of you. All three of these break that recognition and
@@ -613,7 +690,7 @@ var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAl
 
 /* ============================ state ============================ */
 var DEF = {
-  flip:false, upside:false, gray:false, contrast:100, fade:0, zoom:100,
+  flip:false, upside:false, gray:false, levels:0, contrast:100, fade:0, zoom:100,
   showGrid:true, square:false, cols:4, rows:4,
   gcolor:'#ffffff', gwidth:1.5, gopacity:90, halo:true, labels:true, diagonals:false, cross:false,
   pmode:'off', rays:14, pverts:true, pvertsN:9, pcolor:'#ff2d55', popacity:70,
@@ -992,7 +1069,7 @@ function drawScene(c, rect, k, forExport){
   /* upside down is a half turn, which is both mirrors at once */
   c.translate(rect.x + rect.w/2, rect.y + rect.h/2);
   c.scale(mirrorX() ? -1 : 1, mirrorY() ? -1 : 1);
-  c.drawImage(img, -rect.w/2, -rect.h/2, rect.w, rect.h);
+  c.drawImage((S.levels && valueCanvas) ? valueCanvas : img, -rect.w/2, -rect.h/2, rect.w, rect.h);
   c.restore();
 
   if(S.fade > 0){
@@ -1001,6 +1078,15 @@ function drawScene(c, rect, k, forExport){
     c.fillRect(rect.x, rect.y, rect.w, rect.h);
     c.restore();
   }
+
+  /* the blocking-in shapes belong to the photo, so they turn with it */
+  c.save();
+  c.translate(rect.x + rect.w/2, rect.y + rect.h/2);
+  c.scale(mirrorX() ? -1 : 1, mirrorY() ? -1 : 1);
+  c.translate(-(rect.x + rect.w/2), -(rect.y + rect.h/2));
+  c.beginPath(); c.rect(rect.x, rect.y, rect.w, rect.h); c.clip();
+  drawShapes(c, rect, k);
+  c.restore();
 
   /* while cropping, nothing else is in the way — just the photo and the box */
   if(!forExport && CROP.on){ drawCropUI(c, rect); return; }
@@ -1043,6 +1129,12 @@ function updateHint(){
                 + 'Then press <b>Keep this bit</b>.';
     h.style.display = 'block'; return;
   }
+  if(typeof SH !== 'undefined' && SH.tool !== 'off'){
+    h.innerHTML = 'Drag on the photo to draw a <b>' +
+      ({oval:'oval', box:'box', tri:'triangle', line:'line', free:'freehand line'}[SH.tool]) +
+      '</b>. Biggest shapes first. <b>Off</b> on the Shapes tab when you want to drag the guides again.';
+    h.style.display = 'block'; return;
+  }
   if(typeof C !== 'undefined' && C.picking){
     h.innerHTML = 'Tap anywhere on the photo to <b>lift that colour</b>.';
     h.style.display = 'block'; return;
@@ -1064,6 +1156,8 @@ function setPhoto(im, isNew){
   srcCanvas.width = im.naturalWidth; srcCanvas.height = im.naturalHeight;
   srcCanvas.getContext('2d').drawImage(im, 0, 0);
   $('#cropUndoWrap').style.display = (img === original) ? 'none' : 'flex';
+  if(isNew){ SHAPES = []; SH.drawing = null; shapeCount(); saveShapes(); }
+  buildValues();
   if(S.square) syncSquare();
   draw();
 }
@@ -1102,13 +1196,13 @@ function syncSquare(){
   S.rows = Math.max(1, Math.min(16, r || 1));
   $('#rows').value = S.rows; $('#rowsV').textContent = S.rows;
 }
-function bindRange(id, key, fmt){
-  var el = $(id), out = $(id + 'V');
-  el.value = S[key];
-  if(out) out.textContent = fmt ? fmt(S[key]) : S[key];
+function bindRange(id, key, fmt, obj){
+  var o = obj || S, el = $(id), out = $(id + 'V');
+  el.value = o[key];
+  if(out) out.textContent = fmt ? fmt(o[key]) : o[key];
   el.addEventListener('input', function(){
-    S[key] = parseFloat(el.value);
-    if(out) out.textContent = fmt ? fmt(S[key]) : S[key];
+    o[key] = parseFloat(el.value);
+    if(out) out.textContent = fmt ? fmt(o[key]) : o[key];
     if(key === 'cols' && S.square) syncSquare();
     save(); draw();
   });
@@ -1122,20 +1216,20 @@ function bindCheck(id, key, after){
     save(); draw();
   });
 }
-function bindSwatches(wrapId, inputId, key){
-  var wrap = $(wrapId), inp = $(inputId);
+function bindSwatches(wrapId, inputId, key, obj){
+  var o = obj || S, wrap = $(wrapId), inp = $(inputId);
   function mark(){
     $$(wrapId + ' .sw').forEach(function(sw){
-      sw.classList.toggle('on', sw.dataset.c.toLowerCase() === String(S[key]).toLowerCase());
+      sw.classList.toggle('on', sw.dataset.c.toLowerCase() === String(o[key]).toLowerCase());
     });
-    inp.value = S[key];
+    inp.value = o[key];
   }
   wrap.addEventListener('click', function(e){
     var sw = e.target.closest('.sw');
     if(!sw) return;
-    S[key] = sw.dataset.c; mark(); save(); draw();
+    o[key] = sw.dataset.c; mark(); save(); draw();
   });
-  inp.addEventListener('input', function(){ S[key] = inp.value; mark(); save(); draw(); });
+  inp.addEventListener('input', function(){ o[key] = inp.value; mark(); save(); draw(); });
   mark();
 }
 
@@ -1285,6 +1379,14 @@ cv.addEventListener('pointerdown', function(e){
     return;
   }
   if(C.picking){ pickFromPhoto(unmirror(toN(p))); e.preventDefault(); return; }
+  if(SH.tool !== 'off'){
+    var n0 = unmirror(toN(p));
+    SH.drawing = { t:SH.tool, pts:[n0, n0], c:SH.color, w:SH.width };
+    drag = {id:'shape'};
+    cv.setPointerCapture(e.pointerId); e.preventDefault();
+    draw();
+    return;
+  }
   var h = pick(p);
   if(h){ drag = {id:h.id}; }
   else if(S.planeOn && inQuad(p, S.quad.map(function(n){ return P(R,n); }))){
@@ -1301,6 +1403,11 @@ cv.addEventListener('pointermove', function(e){
   }
   var n = toN(p);
   if(drag.id.indexOf('crop:') === 0){ cropDrag(drag.id.slice(5), n, drag); draw(); return; }
+  if(drag.id === 'shape' && SH.drawing){
+    var pn = unmirror(n);
+    if(SH.drawing.t === 'free') SH.drawing.pts.push(pn); else SH.drawing.pts[1] = pn;
+    draw(); return;
+  }
   if(drag.id === 'hz')       S.hy = n.y;
   else if(drag.id === 'vp1'){ S.vp1x = n.x; S.hy = n.y; }
   else if(drag.id === 'vpL'){ S.vpLx = n.x; S.hy = n.y; }
@@ -1319,6 +1426,14 @@ cv.addEventListener('pointermove', function(e){
 });
 function endDrag(e){
   if(!drag) return;
+  if(drag.id === 'shape' && SH.drawing){
+    var d = SH.drawing, keep;
+    if(d.t === 'free') keep = d.pts.length > 3;
+    else keep = Math.abs(d.pts[1].x - d.pts[0].x) > 0.012 || Math.abs(d.pts[1].y - d.pts[0].y) > 0.012;
+    if(keep){ SHAPES.push(d); shapeCount(); saveShapes(); }
+    SH.drawing = null;
+    draw();
+  }
   drag = null; cv.style.cursor = 'crosshair'; save();
 }
 cv.addEventListener('pointerup', endDrag);
@@ -1445,6 +1560,102 @@ $('#dlPaper').addEventListener('click', function(){
   showResult(paperGrid(), 'Grid for your drawing paper', 'paper-grid.png');
 });
 $('#prPaper').addEventListener('click', function(){ printURL(paperGrid()); });
+
+/* ============================ blocking-in shapes ============================
+   Shapes are stored in the photo's own coordinates, not the screen's, so they
+   stay stuck to the thing they were drawn around when the photo is flipped,
+   turned over, zoomed or cropped.
+   ============================================================================ */
+var SHAPES = [];
+var SH = { tool:'oval', color:'#ff2d55', width:3, drawing:null };
+
+function shapePath(c, sh, rect){
+  var p = sh.pts;
+  var X = function(n){ return rect.x + n.x*rect.w; },
+      Y = function(n){ return rect.y + n.y*rect.h; };
+  c.beginPath();
+  if(sh.t === 'free'){
+    for(var i=0;i<p.length;i++){
+      if(i) c.lineTo(X(p[i]), Y(p[i])); else c.moveTo(X(p[i]), Y(p[i]));
+    }
+    return;
+  }
+  var x0 = X(p[0]), y0 = Y(p[0]), x1 = X(p[1]), y1 = Y(p[1]);
+  if(sh.t === 'line'){ c.moveTo(x0, y0); c.lineTo(x1, y1); return; }
+  var l = Math.min(x0,x1), r = Math.max(x0,x1), t = Math.min(y0,y1), b = Math.max(y0,y1);
+  if(sh.t === 'box'){ c.rect(l, t, r-l, b-t); return; }
+  if(sh.t === 'tri'){ c.moveTo((l+r)/2, t); c.lineTo(r, b); c.lineTo(l, b); c.closePath(); return; }
+  c.ellipse((l+r)/2, (t+b)/2, Math.max(1,(r-l)/2), Math.max(1,(b-t)/2), 0, 0, Math.PI*2);
+}
+function drawShapes(c, rect, k){
+  var all = SHAPES.concat(SH.drawing ? [SH.drawing] : []);
+  if(!all.length) return;
+  c.save();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  all.forEach(function(sh){
+    if(sh.t !== 'free' && sh.pts.length < 2) return;
+    shapePath(c, sh, rect);
+    c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = sh.w*k + Math.max(1.5, sh.w*k*0.7);
+    c.stroke();
+    c.strokeStyle = sh.c; c.lineWidth = sh.w*k;
+    c.stroke();
+  });
+  c.restore();
+}
+function shapeCount(){
+  var n = SHAPES.length;
+  $('#shapeCount').innerHTML = n
+    ? n + (n === 1 ? ' shape' : ' shapes') + ' drawn. They save and print with the photo.'
+    : 'Nothing drawn yet. Start with the biggest shape you can see.';
+}
+function markTools(){
+  $$('#shapeTools .btn').forEach(function(b){ b.classList.toggle('on', b.dataset.t === SH.tool); });
+}
+$('#shapeTools').addEventListener('click', function(e){
+  var b = e.target.closest('.btn'); if(!b) return;
+  SH.tool = b.dataset.t; markTools(); updateHint();
+});
+$('#shapeUndo').addEventListener('click', function(){ SHAPES.pop(); shapeCount(); saveShapes(); draw(); });
+$('#shapeClear').addEventListener('click', function(){
+  if(SHAPES.length && !confirm('Rub out all ' + SHAPES.length + ' shapes?')) return;
+  SHAPES = []; shapeCount(); saveShapes(); draw();
+});
+bindRange('#swidth', 'width', null, SH);
+bindSwatches('#scolors', '#scolor', 'color', SH);
+function saveShapes(){ try{ localStorage.setItem('levelup.gridapp.shapes', JSON.stringify(SHAPES)); }catch(e){} }
+try{
+  var sv = JSON.parse(localStorage.getItem('levelup.gridapp.shapes') || '[]');
+  if(sv && sv.length) SHAPES = sv;
+}catch(e){}
+
+/* ---------------- flatten the photo into a few tones ---------------- */
+var valueCanvas = null;
+function buildValues(){
+  valueCanvas = null;
+  if(!S.levels || !srcCanvas) return;
+  var W = srcCanvas.width, H = srcCanvas.height, cap = 1400;
+  var sc = Math.min(1, cap/Math.max(W, H));
+  var w = Math.max(1, Math.round(W*sc)), h = Math.max(1, Math.round(H*sc));
+  var cn = document.createElement('canvas');
+  cn.width = w; cn.height = h;
+  var cx = cn.getContext('2d');
+  cx.drawImage(srcCanvas, 0, 0, w, h);
+  var im = cx.getImageData(0, 0, w, h), d = im.data, n = S.levels;
+  for(var i=0;i<d.length;i+=4){
+    var v = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    var step = Math.min(n-1, Math.floor(v/256*n));
+    var out = Math.round(step*(255/(n-1)));
+    d[i] = d[i+1] = d[i+2] = out;
+  }
+  cx.putImageData(im, 0, 0);
+  valueCanvas = cn;
+}
+$('#valueSteps').addEventListener('click', function(e){
+  var b = e.target.closest('.btn'); if(!b) return;
+  S.levels = parseInt(b.dataset.v, 10) || 0;
+  $$('#valueSteps .btn').forEach(function(x){ x.classList.toggle('on', x === b); });
+  buildValues(); save(); draw();
+});
 
 /* ============================ crop ============================
    The crop box is kept as a fraction of the photo, so it survives zooming
@@ -1616,6 +1827,16 @@ $('#cropApply').addEventListener('click', function(){
   var cnv = document.createElement('canvas');
   cnv.width = w; cnv.height = h;
   cnv.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
+  /* shapes are in photo coordinates, so re-base them onto the piece being kept */
+  var mapPt = function(q){
+    var qx = mirrorX() ? 1 - q.x : q.x, qy = mirrorY() ? 1 - q.y : q.y;
+    var nx = (qx - sxN)/r.w, ny = (qy - syN)/r.h;
+    return { x: mirrorX() ? 1 - nx : nx, y: mirrorY() ? 1 - ny : ny };
+  };
+  SHAPES = SHAPES.map(function(sh){
+    return { t:sh.t, c:sh.c, w:sh.w, pts:sh.pts.map(mapPt) };
+  });
+  saveShapes();
   var im = new Image();
   im.onload = function(){ cropOff(); setPhoto(im, false); };
   im.src = cnv.toDataURL('image/png');
@@ -1968,6 +2189,8 @@ try{
   if(cs){ C.hue = cs.hue|0; C.level = cs.level|0; C.method = cs.method || 'water'; C.mixW = cs.mixW; }
 }catch(e){}
 $('#mixW').value = Math.round(C.mixW*100);
+markTools(); shapeCount();
+$$('#valueSteps .btn').forEach(function(b){ b.classList.toggle('on', (parseInt(b.dataset.v,10)||0) === S.levels); });
 buildRecipes();
 syncColour();
 markModes(); markPaper();

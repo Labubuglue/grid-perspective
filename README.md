@@ -46,6 +46,12 @@ the photo (floor, table top, wall) and the app splits it into true perspective s
 shrink as they go back. It also extends that surface's own edges until they meet, which shows
 you where the vanishing points and the real horizon actually are.
 
+**Shapes** — block the photo in with simple shapes before any detail: ovals, boxes, triangles, lines
+and freehand, drawn straight onto the picture. Shapes are held in the photo's own coordinates, so they
+stay stuck to what they were drawn around when the photo is flipped, turned over or cropped, and they
+save and print with it. Alongside it, **flatten into tones** posterises the photo to 2–5 flat greys so
+the big masses stop hiding behind the detail.
+
 **Colour** — a painter's wheel (red / yellow / blue), so the opposites are the ones that matter when
 you paint: red&harr;green, blue&harr;orange, yellow&harr;violet. Round the wheel is the colour, inwards is
 its strength — pure, strong, medium, weak. Mixing is done in RYB, so blue + yellow really makes green
