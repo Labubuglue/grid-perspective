@@ -405,15 +405,20 @@
           eyelashes will save it.</div>
 
         <div class="lbl">Shape</div>
-        <div class="btns row" id="shapeTools">
-          <button class="btn" data-t="off">Off</button>
-          <button class="btn on" data-t="oval">Oval</button>
-          <button class="btn" data-t="box">Box</button>
-        </div>
-        <div class="btns row" style="margin-top:-8px">
-          <button class="btn" data-t="tri">Triangle</button>
-          <button class="btn" data-t="line">Line</button>
-          <button class="btn" data-t="free">Freehand</button>
+        <div id="shapeTools">
+          <div class="btns" style="margin-bottom:6px">
+            <button class="btn" data-t="off">Off</button>
+            <button class="btn" data-t="select">Select &amp; edit</button>
+          </div>
+          <div class="btns" style="margin-bottom:6px">
+            <button class="btn on" data-t="oval">Oval</button>
+            <button class="btn" data-t="box">Box</button>
+            <button class="btn" data-t="tri">Triangle</button>
+          </div>
+          <div class="btns row">
+            <button class="btn" data-t="line">Line</button>
+            <button class="btn" data-t="free">Freehand</button>
+          </div>
         </div>
 
         <div class="row">
@@ -436,6 +441,18 @@
           <button class="btn ghost" id="shapeClear">Clear all</button>
         </div>
         <div class="note" id="shapeCount">Nothing drawn yet.</div>
+
+        <div id="shapeSel" style="display:none">
+          <div class="sep"></div>
+          <div class="lbl">Selected <b id="selName">oval</b></div>
+          <div class="note">Drag the <b>white squares</b> to reshape it, the <b>orange dot</b> to turn it,
+            or drag from the middle to move it.</div>
+          <div class="row">
+            <div class="lbl">Turn it <b id="srotV">0&deg;</b></div>
+            <input type="range" id="srot" min="-180" max="180" value="0">
+          </div>
+          <div class="btns"><button class="btn" id="shapeDel">Delete this shape</button></div>
+        </div>
 
         <div class="sep"></div>
         <div class="hd"><span>&#9680;</span> Flatten it into tones</div>
@@ -580,6 +597,13 @@
           <li>Stop. Do not draw eyelashes on the photo — the point is to prove the big shapes are right
               <i>before</i> you spend an hour on detail that sits in the wrong place.</li>
         </ol>
+        <p>Nothing you draw is stuck. Hit <b>Select &amp; edit</b> and tap a shape: drag the
+           <b>white squares</b> to reshape it, the <b>orange dot</b> to turn it, or the middle to move
+           it — and <b>Delete this shape</b> (or the Delete key) to get rid of just that one. A newly
+           drawn shape is picked for you, so you can draw an oval and immediately tilt it. That matters
+           more than it sounds: almost nothing in life is upright. A dragonfly's wings, a tilted head,
+           a leaning tree — the <i>angle</i> of the shape is usually the thing that makes a drawing look
+           right or wrong.</p>
         <p><b>Flatten it into tones</b> is the other half of this. It squashes the photo into two or three
            flat greys, which throws away the detail your eye keeps getting distracted by and leaves the
            big masses of light and dark. Turn it on at 2 tones, and the shapes you should be blocking in
@@ -1115,7 +1139,7 @@ function drawScene(c, rect, k, forExport){
 function draw(){
   R = imageRect();
   drawScene(ctx, R, 1, false);
-  if(img && !CROP.on) drawHandles(ctx);
+  if(img && !CROP.on){ drawHandles(ctx); drawGrips(ctx); }
   $('#empty').style.display = img ? 'none' : 'flex';
   updateHint();
 }
@@ -1130,9 +1154,12 @@ function updateHint(){
     h.style.display = 'block'; return;
   }
   if(typeof SH !== 'undefined' && SH.tool !== 'off'){
-    h.innerHTML = 'Drag on the photo to draw a <b>' +
-      ({oval:'oval', box:'box', tri:'triangle', line:'line', free:'freehand line'}[SH.tool]) +
-      '</b>. Biggest shapes first. <b>Off</b> on the Shapes tab when you want to drag the guides again.';
+    h.innerHTML = SH.tool === 'select'
+      ? 'Tap a shape to pick it, then drag the <b>white squares</b> to reshape, the <b>orange dot</b> to '
+        + 'turn it, or the middle to move it. <b>Delete</b> key removes it.'
+      : 'Drag on the photo to draw a <b>' +
+        ({oval:'oval', box:'box', tri:'triangle', line:'line', free:'freehand line'}[SH.tool]) +
+        '</b>. Biggest shapes first, then use <b>Select &amp; edit</b> to turn and adjust them.';
     h.style.display = 'block'; return;
   }
   if(typeof C !== 'undefined' && C.picking){
@@ -1380,8 +1407,24 @@ cv.addEventListener('pointerdown', function(e){
   }
   if(C.picking){ pickFromPhoto(unmirror(toN(p))); e.preventDefault(); return; }
   if(SH.tool !== 'off'){
+    var gr = gripAt(p);
+    if(gr){
+      drag = {id:'grip:' + gr, last:applyMirror(R, p)};
+      cv.setPointerCapture(e.pointerId); e.preventDefault();
+      return;
+    }
+    if(SH.tool === 'select'){
+      var hit = shapeAt(p);
+      selectShape(hit);
+      if(hit != null){
+        drag = {id:'smove', last:applyMirror(R, p)};
+        cv.setPointerCapture(e.pointerId);
+      }
+      e.preventDefault();
+      return;
+    }
     var n0 = unmirror(toN(p));
-    SH.drawing = { t:SH.tool, pts:[n0, n0], c:SH.color, w:SH.width };
+    SH.drawing = { t:SH.tool, pts:[n0, n0], c:SH.color, w:SH.width, r:0 };
     drag = {id:'shape'};
     cv.setPointerCapture(e.pointerId); e.preventDefault();
     draw();
@@ -1401,6 +1444,8 @@ cv.addEventListener('pointermove', function(e){
     else if(img) cv.style.cursor = pick(p) ? 'grab' : 'crosshair';
     return;
   }
+  if(drag.id.indexOf('grip:') === 0){ gripDrag(drag.id.slice(5), applyMirror(R, p), drag); draw(); return; }
+  if(drag.id === 'smove'){ shapeMove(applyMirror(R, p), drag); draw(); return; }
   var n = toN(p);
   if(drag.id.indexOf('crop:') === 0){ cropDrag(drag.id.slice(5), n, drag); draw(); return; }
   if(drag.id === 'shape' && SH.drawing){
@@ -1430,7 +1475,7 @@ function endDrag(e){
     var d = SH.drawing, keep;
     if(d.t === 'free') keep = d.pts.length > 3;
     else keep = Math.abs(d.pts[1].x - d.pts[0].x) > 0.012 || Math.abs(d.pts[1].y - d.pts[0].y) > 0.012;
-    if(keep){ SHAPES.push(d); shapeCount(); saveShapes(); }
+    if(keep){ SHAPES.push(d); shapeCount(); saveShapes(); selectShape(SHAPES.length - 1); }
     SH.drawing = null;
     draw();
   }
@@ -1567,45 +1612,197 @@ $('#prPaper').addEventListener('click', function(){ printURL(paperGrid()); });
    turned over, zoomed or cropped.
    ============================================================================ */
 var SHAPES = [];
-var SH = { tool:'oval', color:'#ff2d55', width:3, drawing:null };
+var SH = { tool:'oval', color:'#ff2d55', width:3, drawing:null, sel:null };
 
-function shapePath(c, sh, rect){
-  var p = sh.pts;
-  var X = function(n){ return rect.x + n.x*rect.w; },
-      Y = function(n){ return rect.y + n.y*rect.h; };
-  c.beginPath();
+/* A shape is an upright box in photo coordinates plus a turn angle about its
+   own centre. The turn is applied in drawing space, so a circle stays a circle
+   however the photo is scaled, and mirroring the photo mirrors the turn with it. */
+function shapeGeom(sh, rect){
+  var p = sh.pts, i;
+  var l, r, t, b;
   if(sh.t === 'free'){
-    for(var i=0;i<p.length;i++){
-      if(i) c.lineTo(X(p[i]), Y(p[i])); else c.moveTo(X(p[i]), Y(p[i]));
+    l = r = p[0].x; t = b = p[0].y;
+    for(i=1;i<p.length;i++){
+      l = Math.min(l, p[i].x); r = Math.max(r, p[i].x);
+      t = Math.min(t, p[i].y); b = Math.max(b, p[i].y);
     }
-    return;
+  } else {
+    l = Math.min(p[0].x, p[1].x); r = Math.max(p[0].x, p[1].x);
+    t = Math.min(p[0].y, p[1].y); b = Math.max(p[0].y, p[1].y);
   }
-  var x0 = X(p[0]), y0 = Y(p[0]), x1 = X(p[1]), y1 = Y(p[1]);
-  if(sh.t === 'line'){ c.moveTo(x0, y0); c.lineTo(x1, y1); return; }
-  var l = Math.min(x0,x1), r = Math.max(x0,x1), t = Math.min(y0,y1), b = Math.max(y0,y1);
-  if(sh.t === 'box'){ c.rect(l, t, r-l, b-t); return; }
-  if(sh.t === 'tri'){ c.moveTo((l+r)/2, t); c.lineTo(r, b); c.lineTo(l, b); c.closePath(); return; }
-  c.ellipse((l+r)/2, (t+b)/2, Math.max(1,(r-l)/2), Math.max(1,(b-t)/2), 0, 0, Math.PI*2);
+  var X0 = rect.x + l*rect.w, X1 = rect.x + r*rect.w;
+  var Y0 = rect.y + t*rect.h, Y1 = rect.y + b*rect.h;
+  return { cx:(X0+X1)/2, cy:(Y0+Y1)/2, hw:(X1-X0)/2, hh:(Y1-Y0)/2, rot:sh.r || 0 };
+}
+/* local offset inside the shape -> unmirrored drawing space, and back */
+function rotPt(g, dx, dy){
+  var c = Math.cos(g.rot), s = Math.sin(g.rot);
+  return { x: g.cx + dx*c - dy*s, y: g.cy + dx*s + dy*c };
+}
+function toLocal(g, p){
+  var c = Math.cos(-g.rot), s = Math.sin(-g.rot), dx = p.x-g.cx, dy = p.y-g.cy;
+  return { x: dx*c - dy*s, y: dx*s + dy*c };
+}
+/* the mirror the photo is drawn under; it is its own inverse */
+function applyMirror(rect, p){
+  var cx = rect.x + rect.w/2, cy = rect.y + rect.h/2;
+  return { x: mirrorX() ? 2*cx - p.x : p.x, y: mirrorY() ? 2*cy - p.y : p.y };
+}
+
+function drawOne(c, sh, rect, k){
+  var g = shapeGeom(sh, rect), i;
+  c.save();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  if(sh.t === 'line'){
+    var a = P(rect, sh.pts[0]), b = P(rect, sh.pts[1]);
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y);
+  } else if(sh.t === 'free'){
+    c.translate(g.cx, g.cy); c.rotate(g.rot); c.translate(-g.cx, -g.cy);
+    c.beginPath();
+    for(i=0;i<sh.pts.length;i++){
+      var q = P(rect, sh.pts[i]);
+      if(i) c.lineTo(q.x, q.y); else c.moveTo(q.x, q.y);
+    }
+  } else {
+    c.translate(g.cx, g.cy); c.rotate(g.rot);
+    c.beginPath();
+    if(sh.t === 'box') c.rect(-g.hw, -g.hh, g.hw*2, g.hh*2);
+    else if(sh.t === 'tri'){ c.moveTo(0, -g.hh); c.lineTo(g.hw, g.hh); c.lineTo(-g.hw, g.hh); c.closePath(); }
+    else c.ellipse(0, 0, Math.max(1, g.hw), Math.max(1, g.hh), 0, 0, Math.PI*2);
+  }
+  c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = sh.w*k + Math.max(1.5, sh.w*k*0.7); c.stroke();
+  c.strokeStyle = sh.c; c.lineWidth = sh.w*k; c.stroke();
+  c.restore();
 }
 function drawShapes(c, rect, k){
   var all = SHAPES.concat(SH.drawing ? [SH.drawing] : []);
-  if(!all.length) return;
-  c.save();
-  c.lineCap = 'round'; c.lineJoin = 'round';
   all.forEach(function(sh){
     if(sh.t !== 'free' && sh.pts.length < 2) return;
-    shapePath(c, sh, rect);
-    c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = sh.w*k + Math.max(1.5, sh.w*k*0.7);
-    c.stroke();
-    c.strokeStyle = sh.c; c.lineWidth = sh.w*k;
-    c.stroke();
+    drawOne(c, sh, rect, k);
+  });
+}
+
+/* ---- the grips on the selected shape (screen only) ---- */
+function selShape(){ return (SH.sel != null) ? SHAPES[SH.sel] : null; }
+function shapeGrips(){
+  var sh = selShape();
+  if(!sh || !img) return [];
+  var g = shapeGeom(sh, R), out = [], m = function(p){ return applyMirror(R, p); };
+  if(sh.t === 'line'){
+    var a = m(P(R, sh.pts[0])), b = m(P(R, sh.pts[1]));
+    return [{id:'e0', x:a.x, y:a.y}, {id:'e1', x:b.x, y:b.y}];
+  }
+  if(sh.t !== 'free'){
+    [['nw',-1,-1], ['ne',1,-1], ['se',1,1], ['sw',-1,1]].forEach(function(h){
+      var q = m(rotPt(g, h[1]*g.hw, h[2]*g.hh));
+      out.push({id:h[0], x:q.x, y:q.y});
+    });
+  }
+  var rp = m(rotPt(g, 0, -g.hh - 30));
+  out.push({id:'rot', x:rp.x, y:rp.y});
+  return out;
+}
+function drawGrips(c){
+  var sh = selShape();
+  if(!sh) return;
+  var g = shapeGeom(sh, R), grips = shapeGrips();
+  c.save();
+  if(sh.t !== 'line'){
+    /* the outline of the box it sits in, turned with it */
+    var corners = [[-1,-1],[1,-1],[1,1],[-1,1]].map(function(h){
+      return applyMirror(R, rotPt(g, h[0]*g.hw, h[1]*g.hh));
+    });
+    c.beginPath();
+    corners.forEach(function(q, i){ i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); });
+    c.closePath();
+    c.setLineDash([5,5]); c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.2; c.stroke();
+    c.setLineDash([]);
+    var top = applyMirror(R, rotPt(g, 0, -g.hh)), rp = applyMirror(R, rotPt(g, 0, -g.hh - 30));
+    c.beginPath(); c.moveTo(top.x, top.y); c.lineTo(rp.x, rp.y);
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.2; c.stroke();
+  }
+  grips.forEach(function(h){
+    c.beginPath();
+    if(h.id === 'rot') c.arc(h.x, h.y, 8, 0, Math.PI*2);
+    else c.rect(h.x-6, h.y-6, 12, 12);
+    c.fillStyle = h.id === 'rot' ? '#F5831F' : '#fff';
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.65)'; c.lineWidth = 1.5; c.stroke();
   });
   c.restore();
+}
+function unRect(q){ return { x:(q.x-R.x)/R.w, y:(q.y-R.y)/R.h }; }
+function shapeMove(u, state){
+  var sh = selShape(); if(!sh) return;
+  var d = { x:(u.x-state.last.x)/R.w, y:(u.y-state.last.y)/R.h };
+  sh.pts = sh.pts.map(function(q){ return { x:q.x+d.x, y:q.y+d.y }; });
+  state.last = u;
+  saveShapes();
+}
+function gripDrag(which, u, state){
+  var sh = selShape(); if(!sh) return;
+  var g = shapeGeom(sh, R);
+  if(which === 'rot'){
+    sh.r = Math.atan2(u.y-g.cy, u.x-g.cx) + Math.PI/2;
+    var deg = ((Math.round(sh.r*180/Math.PI) + 540) % 360) - 180;
+    $('#srot').value = deg; $('#srotV').textContent = deg + '°';
+    saveShapes(); return;
+  }
+  if(which === 'e0' || which === 'e1'){
+    sh.pts[which === 'e0' ? 0 : 1] = unRect(u);
+    saveShapes(); return;
+  }
+  /* resize in the shape's own frame, holding the opposite corner still */
+  var sx = (which === 'ne' || which === 'se') ? 1 : -1;
+  var sy = (which === 'se' || which === 'sw') ? 1 : -1;
+  var F = { x:-sx*g.hw, y:-sy*g.hh };
+  var L = toLocal(g, u);
+  var hw = Math.max(4, Math.abs(L.x-F.x)/2), hh = Math.max(4, Math.abs(L.y-F.y)/2);
+  var cW = rotPt(g, (L.x+F.x)/2, (L.y+F.y)/2);
+  sh.pts = [ unRect({x:cW.x-hw, y:cW.y-hh}), unRect({x:cW.x+hw, y:cW.y+hh}) ];
+  saveShapes();
+}
+function gripAt(p){
+  var gs = shapeGrips(), best = null, bd = 22*22;
+  gs.forEach(function(h){
+    var d = (h.x-p.x)*(h.x-p.x) + (h.y-p.y)*(h.y-p.y);
+    if(d < bd){ bd = d; best = h.id; }
+  });
+  return best;
+}
+/* which shape is under the finger — topmost wins */
+function shapeAt(p){
+  var u = applyMirror(R, p);
+  for(var i=SHAPES.length-1;i>=0;i--){
+    var sh = SHAPES[i], g = shapeGeom(sh, R);
+    if(sh.t === 'line'){
+      var a = P(R, sh.pts[0]), b = P(R, sh.pts[1]);
+      var vx = b.x-a.x, vy = b.y-a.y, L2 = vx*vx + vy*vy || 1;
+      var t = Math.max(0, Math.min(1, ((u.x-a.x)*vx + (u.y-a.y)*vy)/L2));
+      var dx = u.x - (a.x + vx*t), dy = u.y - (a.y + vy*t);
+      if(dx*dx + dy*dy < 18*18) return i;
+    } else {
+      var l = toLocal(g, u);
+      if(Math.abs(l.x) <= g.hw + 12 && Math.abs(l.y) <= g.hh + 12) return i;
+    }
+  }
+  return null;
+}
+function selectShape(i){
+  SH.sel = i;
+  var sh = selShape();
+  $('#shapeSel').style.display = sh ? 'block' : 'none';
+  if(sh){
+    $('#selName').textContent = {oval:'oval', box:'box', tri:'triangle', line:'line', free:'freehand'}[sh.t];
+    var deg = Math.round((sh.r || 0)*180/Math.PI);
+    $('#srot').value = deg; $('#srotV').textContent = deg + '°';
+  }
+  draw();
 }
 function shapeCount(){
   var n = SHAPES.length;
   $('#shapeCount').innerHTML = n
-    ? n + (n === 1 ? ' shape' : ' shapes') + ' drawn. They save and print with the photo.'
+    ? n + (n === 1 ? ' shape' : ' shapes') + ' drawn. Tap one with <b>Select</b> to turn, resize or delete it.'
     : 'Nothing drawn yet. Start with the biggest shape you can see.';
 }
 function markTools(){
@@ -1613,12 +1810,33 @@ function markTools(){
 }
 $('#shapeTools').addEventListener('click', function(e){
   var b = e.target.closest('.btn'); if(!b) return;
-  SH.tool = b.dataset.t; markTools(); updateHint();
+  SH.tool = b.dataset.t;
+  if(SH.tool === 'off') selectShape(null);
+  markTools(); updateHint(); draw();
 });
-$('#shapeUndo').addEventListener('click', function(){ SHAPES.pop(); shapeCount(); saveShapes(); draw(); });
+$('#srot').addEventListener('input', function(){
+  var sh = selShape(); if(!sh) return;
+  sh.r = parseFloat(this.value)*Math.PI/180;
+  $('#srotV').textContent = Math.round(parseFloat(this.value)) + '°';
+  saveShapes(); draw();
+});
+$('#shapeDel').addEventListener('click', function(){
+  if(SH.sel == null) return;
+  SHAPES.splice(SH.sel, 1);
+  selectShape(null); shapeCount(); saveShapes(); draw();
+});
+window.addEventListener('keydown', function(e){
+  if((e.key === 'Delete' || e.key === 'Backspace') && SH.sel != null &&
+     !/^(INPUT|TEXTAREA)$/.test((e.target.tagName || ''))){
+    e.preventDefault(); $('#shapeDel').click();
+  }
+});
+$('#shapeUndo').addEventListener('click', function(){
+  SHAPES.pop(); selectShape(null); shapeCount(); saveShapes(); draw();
+});
 $('#shapeClear').addEventListener('click', function(){
   if(SHAPES.length && !confirm('Rub out all ' + SHAPES.length + ' shapes?')) return;
-  SHAPES = []; shapeCount(); saveShapes(); draw();
+  SHAPES = []; selectShape(null); shapeCount(); saveShapes(); draw();
 });
 bindRange('#swidth', 'width', null, SH);
 bindSwatches('#scolors', '#scolor', 'color', SH);
@@ -2189,7 +2407,7 @@ try{
   if(cs){ C.hue = cs.hue|0; C.level = cs.level|0; C.method = cs.method || 'water'; C.mixW = cs.mixW; }
 }catch(e){}
 $('#mixW').value = Math.round(C.mixW*100);
-markTools(); shapeCount();
+markTools(); shapeCount(); selectShape(null);
 $$('#valueSteps .btn').forEach(function(b){ b.classList.toggle('on', (parseInt(b.dataset.v,10)||0) === S.levels); });
 buildRecipes();
 syncColour();

@@ -47,7 +47,8 @@ shrink as they go back. It also extends that surface's own edges until they meet
 you where the vanishing points and the real horizon actually are.
 
 **Shapes** — block the photo in with simple shapes before any detail: ovals, boxes, triangles, lines
-and freehand, drawn straight onto the picture. Shapes are held in the photo's own coordinates, so they
+and freehand, drawn straight onto the picture. Each one can be selected and then turned, reshaped
+corner by corner, moved or deleted — the turn matters, since almost nothing worth drawing is upright. Shapes are held in the photo's own coordinates, so they
 stay stuck to what they were drawn around when the photo is flipped, turned over or cropped, and they
 save and print with it. Alongside it, **flatten into tones** posterises the photo to 2–5 flat greys so
 the big masses stop hiding behind the detail.
